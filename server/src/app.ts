@@ -11,6 +11,7 @@ import errorPlugin from './plugins/error.js';
 import authPlugin from './plugins/auth.js';
 import { isApiOrAdminPath, shouldServeSpaIndex } from './lib/http.js';
 import { ensurePrecompressedAssets } from './lib/static-compression.js';
+import { logger } from './lib/logger.js';
 
 // Routes
 import authRoutes from './modules/auth/auth.routes.js';
@@ -27,12 +28,7 @@ export async function buildApp() {
     const fastify = Fastify({
         requestIdHeader: 'x-request-id',
         requestIdLogLabel: 'requestId',
-        logger: env.NODE_ENV === 'development' ? {
-            transport: {
-                target: 'pino-pretty',
-                options: { colorize: true },
-            },
-        } : true,
+        loggerInstance: logger,
     });
 
     const parsedCorsOrigins = (env.CORS_ORIGIN || '')

@@ -22,6 +22,7 @@ import {
     MenuUnfoldOutlined,
     FileTextOutlined,
     HistoryOutlined,
+    FileSearchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../api';
@@ -36,6 +37,7 @@ const menuConfig = [
     { key: '/api-keys', icon: <KeyOutlined />, label: 'API Key', title: 'API Key 管理' },
     { key: '/api-docs', icon: <FileTextOutlined />, label: 'API 文档', title: 'API 文档' },
     { key: '/operation-logs', icon: <HistoryOutlined />, label: '操作日志', title: '操作日志' },
+    { key: '/system-logs', icon: <FileSearchOutlined />, label: '系统日志', title: '系统日志' },
     { key: '/admins', icon: <UserOutlined />, label: '管理员', title: '管理员管理', superAdmin: true },
     { key: '/settings', icon: <SettingOutlined />, label: '系统设置', title: '系统设置' },
 ];

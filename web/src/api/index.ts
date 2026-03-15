@@ -631,5 +631,8 @@ export const dashboardApi = {
 export const logsApi = {
     getList: <T = Record<string, unknown>>(params: { page?: number; pageSize?: number; action?: string; resource?: string }) =>
         requestGet<ApiPagedList<T>>('/admin/dashboard/logs', { params }),
+
+    getSystemLogs: <T = Record<string, unknown>>(params?: { level?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'; keyword?: string; lines?: number }) =>
+        requestGet<{ filePath: string; lines: number; list: T[] }>('/admin/dashboard/system-logs', { params }),
 };
 

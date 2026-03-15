@@ -25,6 +25,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    volumes:
+      - app_logs:/app/server/logs
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 30s
@@ -73,5 +75,6 @@ networks:
     driver: bridge
 
 volumes:
+  app_logs:
   redis_data:
   postgres_data:
