@@ -100,7 +100,7 @@ const MainLayout: React.FC = () => {
                 trigger={null}
                 collapsible
                 collapsed={collapsed}
-                theme="dark"
+                theme="light"
                 width={208}
                 style={{
                     overflow: 'auto',
@@ -109,7 +109,8 @@ const MainLayout: React.FC = () => {
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    boxShadow: '2px 0 8px rgba(15, 23, 42, 0.12)',
+                    background: '#ffffff',
+                    borderRight: '1px solid #e2e8f0',
                 }}
             >
                 <div
@@ -118,7 +119,7 @@ const MainLayout: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderBottom: '1px solid rgba(199, 210, 254, 0.2)',
+                        borderBottom: '1px solid #e2e8f0',
                     }}
                 >
                     <Space>
@@ -126,25 +127,25 @@ const MainLayout: React.FC = () => {
                             style={{
                                 width: 32,
                                 height: 32,
-                                borderRadius: 10,
-                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                borderRadius: 8,
+                                background: '#0f172a',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: '#fff',
                                 fontWeight: 600,
-                                boxShadow: '0 6px 14px rgba(99, 102, 241, 0.35)',
+                                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.24)',
                             }}
                         >
                             GX
                         </div>
                         {!collapsed && (
-                            <Text strong style={{ fontSize: 16, color: '#eef2ff', letterSpacing: 0.3 }}>廾匸邮箱</Text>
+                            <Text strong style={{ fontSize: 16, color: '#0f172a', letterSpacing: 0.2 }}>廾匸邮箱</Text>
                         )}
                     </Space>
                 </div>
                 <Menu
-                    theme="dark"
+                    theme="light"
                     mode="inline"
                     selectedKeys={selectedKeys}
                     items={menuItems}
@@ -156,7 +157,7 @@ const MainLayout: React.FC = () => {
                 style={{
                     marginLeft: collapsed ? 80 : 208,
                     transition: 'margin-left 0.2s ease',
-                    background: '#f1f5f9',
+                    background: '#f8fafc',
                 }}
             >
                 <Header
@@ -169,7 +170,7 @@ const MainLayout: React.FC = () => {
                         borderBottom: '1px solid #e2e8f0',
                         height: 56,
                         lineHeight: '56px',
-                        boxShadow: '0 1px 8px rgba(15, 23, 42, 0.06)',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                         position: 'sticky',
                         top: 0,
                         zIndex: 10,
@@ -178,7 +179,7 @@ const MainLayout: React.FC = () => {
                     <Space>
                         <span
                             onClick={() => setCollapsed(!collapsed)}
-                            style={{ fontSize: 16, cursor: 'pointer', color: '#595959' }}
+                            style={{ fontSize: 16, cursor: 'pointer', color: '#334155' }}
                         >
                             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         </span>
@@ -193,7 +194,7 @@ const MainLayout: React.FC = () => {
 
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                         <Space style={{ cursor: 'pointer' }}>
-                            <Avatar size="small" style={{ backgroundColor: '#1890ff' }}>
+                            <Avatar size="small" style={{ backgroundColor: '#0f172a' }}>
                                 {avatarText}
                             </Avatar>
                             <Text>{displayName}</Text>
@@ -207,7 +208,8 @@ const MainLayout: React.FC = () => {
                         padding: 24,
                         background: '#fff',
                         borderRadius: token.borderRadiusLG,
-                        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                         minHeight: 'calc(100vh - 56px - 48px)',
                     }}
                 >

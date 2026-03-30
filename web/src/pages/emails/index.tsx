@@ -3,6 +3,7 @@ import {
     Table,
     Button,
     Space,
+    Pagination,
     Modal,
     Form,
     Input,
@@ -99,6 +100,8 @@ interface EmailDetailsResult extends EmailAccount {
     refreshToken: string;
 }
 
+const PASSWORD_MASK = '****************';
+
 const EmailsPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<EmailAccount[]>([]);
@@ -141,6 +144,10 @@ const EmailsPage: React.FC = () => {
     const [passwordById, setPasswordById] = useState<Record<number, string | null>>({});
     const [passwordLoadingIds, setPasswordLoadingIds] = useState<Set<number>>(new Set());
     const [batchRefreshing, setBatchRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'emails' | 'groups'>('emails');
+    const [groupKeyword, setGroupKeyword] = useState('');
+    const [groupPage, setGroupPage] = useState(1);
+    const [groupPageSize, setGroupPageSize] = useState(10);
     const latestListRequestIdRef = useRef(0);
 
     const toOptionalNumber = (value: unknown): number | undefined => {
@@ -615,14 +622,14 @@ const EmailsPage: React.FC = () => {
             title: '邮箱',
             dataIndex: 'email',
             key: 'email',
-            width: 220,
+            width: 360,
             ellipsis: true,
         },
         {
             title: '密码',
             dataIndex: 'hasPassword',
             key: 'password',
-            width: 130,
+            width: 240,
             render: (hasPassword: boolean, record: EmailAccount) => {
                 if (!hasPassword) {
                     return <Text type="secondary">-</Text>;
@@ -631,10 +638,22 @@ const EmailsPage: React.FC = () => {
                 const visible = visiblePasswordIds.has(record.id);
                 const loadingPwd = passwordLoadingIds.has(record.id);
                 const password = passwordById[record.id] ?? null;
+                const displayValue = visible ? (password || PASSWORD_MASK) : PASSWORD_MASK;
                 return (
                     <Space size={4}>
-                        <Text code style={{ marginBottom: 0 }}>
-                            {visible ? (password || '***') : '***'}
+                        <Text
+                            code
+                            style={{
+                                marginBottom: 0,
+                                display: 'inline-block',
+                                minWidth: 160,
+                                maxWidth: 260,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {displayValue}
                         </Text>
                         <Tooltip title={visible ? '隐藏密码' : '显示密码'}>
                             <Button
@@ -775,6 +794,34 @@ const EmailsPage: React.FC = () => {
         [page, pageSize, total]
     );
 
+    const filteredGroups = useMemo(() => {
+        const kw = groupKeyword.trim().toLowerCase();
+        if (!kw) {
+            return groups;
+        }
+        return groups.filter((group: EmailGroup) => {
+            const name = group.name?.toLowerCase() || '';
+            const description = group.description?.toLowerCase() || '';
+            return name.includes(kw) || description.includes(kw);
+        });
+    }, [groupKeyword, groups]);
+
+    const pagedGroups = useMemo(() => {
+        const start = (groupPage - 1) * groupPageSize;
+        return filteredGroups.slice(start, start + groupPageSize);
+    }, [filteredGroups, groupPage, groupPageSize]);
+
+    useEffect(() => {
+        setGroupPage(1);
+    }, [groupKeyword]);
+
+    useEffect(() => {
+        const maxPage = Math.max(1, Math.ceil(filteredGroups.length / groupPageSize));
+        if (groupPage > maxPage) {
+            setGroupPage(maxPage);
+        }
+    }, [filteredGroups.length, groupPage, groupPageSize]);
+
     const emailDetailSrcDoc = useMemo(
         () => `
                         <!DOCTYPE html>
@@ -884,9 +931,52 @@ const EmailsPage: React.FC = () => {
         <div>
             <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
             <Tabs
-                defaultActiveKey="emails"
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key as 'emails' | 'groups')}
                 animated={false}
                 destroyInactiveTabPane
+                tabBarExtraContent={
+                    activeTab === 'emails' ? (
+                        <Space wrap>
+                            <Button
+                                icon={<SyncOutlined spin={batchRefreshing} />}
+                                onClick={handleBatchRefreshTokens}
+                                loading={batchRefreshing}
+                            >
+                                刷新全部 Token
+                            </Button>
+                            <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
+                                导入
+                            </Button>
+                            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                                导出
+                            </Button>
+                            {selectedRowKeys.length > 0 && (
+                                <>
+                                    <Button icon={<GroupOutlined />} onClick={() => setAssignGroupModalVisible(true)}>
+                                        分配分组 ({selectedRowKeys.length})
+                                    </Button>
+                                    <Button onClick={handleBatchRemoveGroup}>
+                                        移出分组 ({selectedRowKeys.length})
+                                    </Button>
+                                    <Popconfirm
+                                        title={`确定要删除选中的 ${selectedRowKeys.length} 个邮箱吗？`}
+                                        onConfirm={handleBatchDelete}
+                                    >
+                                        <Button danger>批量删除 ({selectedRowKeys.length})</Button>
+                                    </Popconfirm>
+                                </>
+                            )}
+                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                                添加邮箱
+                            </Button>
+                        </Space>
+                    ) : (
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
+                            创建分组
+                        </Button>
+                    )
+                }
                 items={[
                     {
                         key: 'emails',
@@ -915,40 +1005,14 @@ const EmailsPage: React.FC = () => {
                                             }}
                                         />
                                     </Space>
-                                    <Space wrap>
-                                        <Button
-                                            icon={<SyncOutlined spin={batchRefreshing} />}
-                                            onClick={handleBatchRefreshTokens}
-                                            loading={batchRefreshing}
-                                        >
-                                            刷新全部 Token
-                                        </Button>
-                                        <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
-                                            导入
-                                        </Button>
-                                        <Button icon={<DownloadOutlined />} onClick={handleExport}>
-                                            导出
-                                        </Button>
-                                        {selectedRowKeys.length > 0 && (
-                                            <>
-                                                <Button icon={<GroupOutlined />} onClick={() => setAssignGroupModalVisible(true)}>
-                                                    分配分组 ({selectedRowKeys.length})
-                                                </Button>
-                                                <Button onClick={handleBatchRemoveGroup}>
-                                                    移出分组 ({selectedRowKeys.length})
-                                                </Button>
-                                                <Popconfirm
-                                                    title={`确定要删除选中的 ${selectedRowKeys.length} 个邮箱吗？`}
-                                                    onConfirm={handleBatchDelete}
-                                                >
-                                                    <Button danger>批量删除 ({selectedRowKeys.length})</Button>
-                                                </Popconfirm>
-                                            </>
-                                        )}
-                                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                                            添加邮箱
-                                        </Button>
-                                    </Space>
+                                    <Pagination
+                                        current={tablePagination.current}
+                                        pageSize={tablePagination.pageSize}
+                                        total={tablePagination.total}
+                                        showSizeChanger={tablePagination.showSizeChanger}
+                                        showTotal={tablePagination.showTotal}
+                                        onChange={tablePagination.onChange}
+                                    />
                                 </div>
 
                                 <Table
@@ -957,7 +1021,7 @@ const EmailsPage: React.FC = () => {
                                     rowKey="id"
                                     loading={loading}
                                     rowSelection={rowSelection}
-                                    pagination={tablePagination}
+                                    pagination={false}
                                     scroll={{ x: 'max-content', y: 560 }}
                                 />
                             </>
@@ -968,16 +1032,33 @@ const EmailsPage: React.FC = () => {
                         label: '邮箱分组',
                         children: (
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
-                                        创建分组
-                                    </Button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
+                                    <Input
+                                        placeholder="搜索分组名称/描述"
+                                        prefix={<SearchOutlined />}
+                                        value={groupKeyword}
+                                        onChange={(e) => setGroupKeyword(e.target.value)}
+                                        style={{ width: 280 }}
+                                        allowClear
+                                    />
+                                    <Pagination
+                                        current={groupPage}
+                                        pageSize={groupPageSize}
+                                        total={filteredGroups.length}
+                                        showSizeChanger
+                                        showTotal={(count: number) => `共 ${count} 条`}
+                                        onChange={(currentPage: number, currentPageSize: number) => {
+                                            setGroupPage(currentPage);
+                                            setGroupPageSize(currentPageSize);
+                                        }}
+                                    />
                                 </div>
                                 <Table
                                     columns={groupColumns}
-                                    dataSource={groups}
+                                    dataSource={pagedGroups}
                                     rowKey="id"
                                     pagination={false}
+                                    scroll={{ x: 'max-content', y: 560 }}
                                 />
                             </>
                         ),

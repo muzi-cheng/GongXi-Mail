@@ -15,7 +15,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
     'Noto Color Emoji';
-  background: #f1f5f9;
+  background: #f8fafc;
   color: #0f172a;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -42,7 +42,40 @@ canvas {
 .ant-dropdown,
 .ant-select-dropdown,
 .ant-picker-dropdown {
-  border-radius: 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.ant-card,
+.ant-modal-content,
+.ant-dropdown,
+.ant-select-dropdown,
+.ant-picker-dropdown {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.ant-btn {
+  font-weight: 500;
+}
+
+.ant-btn-primary {
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-pagination .ant-pagination-item,
+.ant-pagination .ant-pagination-prev,
+.ant-pagination .ant-pagination-next {
+  border-radius: 8px !important;
 }
 
 /* 滚动条样式 */
@@ -52,14 +85,14 @@ canvas {
 }
 
 ::-webkit-scrollbar-track {
-  background: #e2e8f0;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: #cbd5e1;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #94a3b8;
 }
