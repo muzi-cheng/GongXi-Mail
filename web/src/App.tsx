@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, App as AntApp, Spin } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import { App as AntApp, Spin } from 'antd';
 import { useAuthStore } from './stores/authStore';
 import { isSuperAdmin } from './utils/auth';
 
@@ -57,55 +56,44 @@ const App: React.FC = () => {
   );
 
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        cssVar: {},
-        token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 6,
-        },
-      }}
-    >
-      <AntApp>
-        <BrowserRouter>
-          <Routes>
-            {/* 登录页 */}
-            <Route path="/login" element={withSuspense(<LoginPage />)} />
+    <AntApp>
+      <BrowserRouter>
+        <Routes>
+          {/* 登录页 */}
+          <Route path="/login" element={withSuspense(<LoginPage />)} />
 
-            {/* 需要认证的页面 */}
+          {/* 需要认证的页面 */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                {withSuspense(<MainLayout />)}
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={withSuspense(<DashboardPage />)} />
+            <Route path="emails" element={withSuspense(<EmailsPage />)} />
+            <Route path="api-keys" element={withSuspense(<ApiKeysPage />)} />
+            <Route path="api-docs" element={withSuspense(<ApiDocsPage />)} />
+            <Route path="operation-logs" element={withSuspense(<OperationLogsPage />)} />
+            <Route path="system-logs" element={withSuspense(<SystemLogsPage />)} />
             <Route
-              path="/"
+              path="admins"
               element={
-                <ProtectedRoute>
-                  {withSuspense(<MainLayout />)}
-                </ProtectedRoute>
+                <SuperAdminRoute>
+                  {withSuspense(<AdminsPage />)}
+                </SuperAdminRoute>
               }
-            >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={withSuspense(<DashboardPage />)} />
-              <Route path="emails" element={withSuspense(<EmailsPage />)} />
-              <Route path="api-keys" element={withSuspense(<ApiKeysPage />)} />
-              <Route path="api-docs" element={withSuspense(<ApiDocsPage />)} />
-              <Route path="operation-logs" element={withSuspense(<OperationLogsPage />)} />
-              <Route path="system-logs" element={withSuspense(<SystemLogsPage />)} />
-              <Route
-                path="admins"
-                element={
-                  <SuperAdminRoute>
-                    {withSuspense(<AdminsPage />)}
-                  </SuperAdminRoute>
-                }
-              />
-              <Route path="settings" element={withSuspense(<SettingsPage />)} />
-            </Route>
+            />
+            <Route path="settings" element={withSuspense(<SettingsPage />)} />
+          </Route>
 
-            {/* 404 重定向 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AntApp>
-    </ConfigProvider>
+          {/* 404 重定向 */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AntApp>
   );
 };
 

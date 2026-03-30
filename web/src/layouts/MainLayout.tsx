@@ -100,7 +100,7 @@ const MainLayout: React.FC = () => {
                 trigger={null}
                 collapsible
                 collapsed={collapsed}
-                theme="light"
+                theme="dark"
                 width={208}
                 style={{
                     overflow: 'auto',
@@ -109,7 +109,7 @@ const MainLayout: React.FC = () => {
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    borderRight: '1px solid #f0f0f0',
+                    boxShadow: '2px 0 8px rgba(15, 23, 42, 0.12)',
                 }}
             >
                 <div
@@ -118,7 +118,7 @@ const MainLayout: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderBottom: '1px solid #f0f0f0',
+                        borderBottom: '1px solid rgba(199, 210, 254, 0.2)',
                     }}
                 >
                     <Space>
@@ -126,24 +126,25 @@ const MainLayout: React.FC = () => {
                             style={{
                                 width: 32,
                                 height: 32,
-                                borderRadius: 8,
-                                background: '#1890ff',
+                                borderRadius: 10,
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: '#fff',
                                 fontWeight: 600,
+                                boxShadow: '0 6px 14px rgba(99, 102, 241, 0.35)',
                             }}
                         >
                             GX
                         </div>
                         {!collapsed && (
-                            <Text strong style={{ fontSize: 16 }}>廾匸邮箱</Text>
+                            <Text strong style={{ fontSize: 16, color: '#eef2ff', letterSpacing: 0.3 }}>廾匸邮箱</Text>
                         )}
                     </Space>
                 </div>
                 <Menu
-                    theme="light"
+                    theme="dark"
                     mode="inline"
                     selectedKeys={selectedKeys}
                     items={menuItems}
@@ -151,7 +152,13 @@ const MainLayout: React.FC = () => {
                 />
             </Sider>
 
-            <Layout style={{ marginLeft: collapsed ? 80 : 208, transition: 'margin-left 0.2s ease' }}>
+            <Layout
+                style={{
+                    marginLeft: collapsed ? 80 : 208,
+                    transition: 'margin-left 0.2s ease',
+                    background: '#f1f5f9',
+                }}
+            >
                 <Header
                     style={{
                         padding: '0 24px',
@@ -159,9 +166,13 @@ const MainLayout: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        borderBottom: '1px solid #f0f0f0',
+                        borderBottom: '1px solid #e2e8f0',
                         height: 56,
                         lineHeight: '56px',
+                        boxShadow: '0 1px 8px rgba(15, 23, 42, 0.06)',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
                     }}
                 >
                     <Space>
@@ -196,6 +207,7 @@ const MainLayout: React.FC = () => {
                         padding: 24,
                         background: '#fff',
                         borderRadius: token.borderRadiusLG,
+                        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
                         minHeight: 'calc(100vh - 56px - 48px)',
                     }}
                 >

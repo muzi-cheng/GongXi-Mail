@@ -4,6 +4,99 @@ import { AppError } from '../../plugins/error.js';
 import type { Prisma } from '@prisma/client';
 import type { CreateEmailInput, UpdateEmailInput, ListEmailInput, ImportEmailInput } from './email.schema.js';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const AUTO_SEPARATOR_CANDIDATES = ['----', '|', ',', ';', '\t', ':'] as const;
+
+type ParsedImportLine = {
+    email: string;
+    clientId: string;
+    refreshToken: string;
+    password?: string;
+};
+
+const normalizeImportText = (content: string): string =>
+    content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+const shouldSkipImportLine = (line: string): boolean => {
+    if (!line) return true;
+    if (/^#{1,6}\s*/.test(line)) return true;
+    const compact = line.replace(/\s+/g, '');
+    if (/^[-=_*|]{3,}$/.test(compact)) return true;
+    if (!line.includes('@')) return true;
+    return false;
+};
+
+const sanitizeImportLines = (content: string): string[] => {
+    const normalized = normalizeImportText(content);
+    return normalized
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => !shouldSkipImportLine(line));
+};
+
+const parseImportLineBySeparator = (line: string, separator: string): ParsedImportLine | null => {
+    const parts = line
+        .split(separator)
+        .map((part) => part.trim());
+
+    let email = '';
+    let clientId = '';
+    let refreshToken = '';
+    let password: string | undefined;
+
+    if (parts.length >= 5) {
+        // email----clientId----uuid----info----refreshToken
+        email = parts[0] || '';
+        clientId = parts[1] || '';
+        refreshToken = parts[4] || '';
+    } else if (parts.length === 4) {
+        // email----password----clientId----refreshToken
+        email = parts[0] || '';
+        password = parts[1] || '';
+        clientId = parts[2] || '';
+        refreshToken = parts[3] || '';
+    } else if (parts.length === 3) {
+        // email----clientId----refreshToken
+        email = parts[0] || '';
+        clientId = parts[1] || '';
+        refreshToken = parts[2] || '';
+    }
+
+    if (!EMAIL_REGEX.test(email) || !clientId || !refreshToken) {
+        return null;
+    }
+
+    return {
+        email,
+        clientId,
+        refreshToken,
+        password: password || undefined,
+    };
+};
+
+const detectSeparator = (lines: string[], fallbackSeparator: string): string => {
+    const candidates = [...AUTO_SEPARATOR_CANDIDATES];
+
+    let bestSeparator = '';
+    let bestScore = 0;
+
+    for (const candidate of candidates) {
+        let score = 0;
+        for (const line of lines) {
+            if (parseImportLineBySeparator(line, candidate)) {
+                score += 1;
+            }
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestSeparator = candidate;
+        }
+    }
+
+    return bestScore > 0 ? bestSeparator : fallbackSeparator;
+};
+
 export const emailService = {
     /**
      * 获取邮箱列表
@@ -30,14 +123,15 @@ export const emailService = {
                     id: true,
                     email: true,
                     clientId: true,
-                status: true,
-                groupId: true,
-                group: { select: { id: true, name: true, fetchStrategy: true } },
-                lastCheckAt: true,
-                tokenRefreshedAt: true,
-                errorMessage: true,
-                createdAt: true,
-            },
+                    password: true,
+                    status: true,
+                    groupId: true,
+                    group: { select: { id: true, name: true, fetchStrategy: true } },
+                    lastCheckAt: true,
+                    tokenRefreshedAt: true,
+                    errorMessage: true,
+                    createdAt: true,
+                },
                 skip,
                 take: pageSize,
                 orderBy: { id: 'desc' },
@@ -45,7 +139,21 @@ export const emailService = {
             prisma.emailAccount.count({ where }),
         ]);
 
-        return { list, total, page, pageSize };
+        const normalizedList = list.map((item) => ({
+            id: item.id,
+            email: item.email,
+            clientId: item.clientId,
+            hasPassword: !!item.password,
+            status: item.status,
+            groupId: item.groupId,
+            group: item.group,
+            lastCheckAt: item.lastCheckAt,
+            tokenRefreshedAt: item.tokenRefreshedAt,
+            errorMessage: item.errorMessage,
+            createdAt: item.createdAt,
+        }));
+
+        return { list: normalizedList, total, page, pageSize };
     },
 
     /**
@@ -58,7 +166,6 @@ export const emailService = {
                 id: true,
                 email: true,
                 clientId: true,
-                password: !!includeSecrets,
                 refreshToken: !!includeSecrets,
                 status: true,
                 groupId: true,
@@ -80,11 +187,34 @@ export const emailService = {
             return {
                 ...email,
                 refreshToken: email.refreshToken ? decrypt(email.refreshToken) : email.refreshToken,
-                password: email.password ? decrypt(email.password) : email.password,
             };
         }
 
         return email;
+    },
+
+    /**
+     * 按需查看单条邮箱密码（避免列表明文下发）
+     */
+    async getPasswordById(id: number) {
+        const email = await prisma.emailAccount.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                password: true,
+            },
+        });
+
+        if (!email) {
+            throw new AppError('NOT_FOUND', 'Email account not found', 404);
+        }
+
+        return {
+            id: email.id,
+            email: email.email,
+            password: email.password ? decrypt(email.password) : null,
+        };
     },
 
     /**
@@ -246,7 +376,13 @@ export const emailService = {
      */
     async import(input: ImportEmailInput) {
         const { content, separator, groupId } = input;
-        const lines = content.split('\n').filter((line: string) => line.trim());
+        const lines = sanitizeImportLines(content);
+
+        if (!lines.length) {
+            throw new AppError('INVALID_IMPORT_CONTENT', 'No valid email rows found after cleanup', 400);
+        }
+
+        const effectiveSeparator = detectSeparator(lines, separator);
 
         if (groupId !== undefined) {
             const group = await prisma.emailGroup.findUnique({ where: { id: groupId } });
@@ -261,44 +397,17 @@ export const emailService = {
 
         for (const line of lines) {
             try {
-                const parts = line.trim().split(separator);
-                if (parts.length < 3) {
+                const parsed = parseImportLineBySeparator(line, effectiveSeparator);
+                if (!parsed) {
                     throw new Error('Invalid format');
                 }
 
-                let email, clientId, refreshToken, password;
-
-                // 尝试猜测格式
-                // 1. email----password----clientId----refreshToken (4列)
-                // 2. email----clientId----refreshToken (3列)
-                // 3. email----clientId----uuid----info----refreshToken (5列)
-
-                if (parts.length >= 5) {
-                    // email----clientId----uuid----info----refreshToken
-                    email = parts[0];
-                    clientId = parts[1];
-                    refreshToken = parts[4];
-                    // 这种格式通常没有密码，或者密码隐藏在 info 里？暂且不处理密码
-                } else if (parts.length === 4) {
-                    // email----password----clientId----refreshToken
-                    email = parts[0];
-                    password = parts[1];
-                    clientId = parts[2];
-                    refreshToken = parts[3];
-                } else {
-                    // email----clientId----refreshToken
-                    email = parts[0];
-                    clientId = parts[1];
-                    refreshToken = parts[2];
-                }
-
-                if (!email || !clientId || !refreshToken) {
-                    throw new Error('Missing required fields');
-                }
+                const { email, clientId, refreshToken, password } = parsed;
+                const encryptedRefreshToken = encrypt(refreshToken);
 
                 const data: Prisma.EmailAccountUncheckedUpdateInput = {
                     clientId,
-                    refreshToken: encrypt(refreshToken),
+                    refreshToken: encryptedRefreshToken,
                     status: 'ACTIVE',
                 };
                 if (password) data.password = encrypt(password);
@@ -317,7 +426,7 @@ export const emailService = {
                     const createData: Prisma.EmailAccountUncheckedCreateInput = {
                         email,
                         clientId,
-                        refreshToken: encrypt(refreshToken),
+                        refreshToken: encryptedRefreshToken,
                         status: 'ACTIVE',
                     };
                     if (password) {
@@ -343,7 +452,7 @@ export const emailService = {
     /**
      * 导出
      */
-    async export(ids?: number[], separator = '----', groupId?: number) {
+    async export(ids?: number[], separator = '----', groupId?: number, includePassword = false) {
         const where: Prisma.EmailAccountWhereInput = {};
         if (ids?.length) {
             where.id = { in: ids };
@@ -358,11 +467,16 @@ export const emailService = {
                 email: true,
                 clientId: true,
                 refreshToken: true,
+                password: includePassword,
             },
         });
 
-        const lines = accounts.map((acc: { email: string; clientId: string; refreshToken: string }) => {
+        const lines = accounts.map((acc: { email: string; clientId: string; refreshToken: string; password?: string | null }) => {
             const token = decrypt(acc.refreshToken);
+            if (includePassword) {
+                const pwd = acc.password ? decrypt(acc.password) : '';
+                return `${acc.email}${separator}${pwd}${separator}${acc.clientId}${separator}${token}`;
+            }
             return `${acc.email}${separator}${acc.clientId}${separator}${token}`;
         });
 

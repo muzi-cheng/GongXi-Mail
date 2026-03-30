@@ -26,6 +26,22 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
         return { success: true, data: email };
     });
 
+    // 按需查看密码（避免列表明文传输）
+    fastify.get('/:id/password', async (request) => {
+        const { id } = request.params as { id: string };
+        const result = await emailService.getPasswordById(parseInt(id));
+        request.log.info({
+            systemEvent: true,
+            action: 'email.password_view',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            emailId: result.id,
+            email: result.email,
+            hasPassword: !!result.password,
+        }, '查看单条邮箱密码');
+        return { success: true, data: result };
+    });
+
     // 创建
     fastify.post('/', async (request) => {
         const input = createEmailSchema.parse(request.body);
@@ -110,10 +126,12 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
             ids: z.string().optional(),
             separator: z.string().optional(),
             groupId: z.coerce.number().int().positive().optional(),
+            includePassword: z.string().optional(),
         }).parse(request.query);
 
         const idArray = query.ids?.split(',').map(Number).filter((id: number) => Number.isFinite(id) && id > 0);
-        const content = await emailService.export(idArray, query.separator, query.groupId);
+        const includePassword = query.includePassword === 'true';
+        const content = await emailService.export(idArray, query.separator, query.groupId, includePassword);
         request.log.info({
             systemEvent: true,
             action: 'email.export',
@@ -121,6 +139,7 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
             actorUsername: request.user?.username ?? null,
             groupId: query.groupId ?? null,
             emailCount: idArray?.length ?? null,
+            includePassword,
         }, '导出邮箱');
         return { success: true, data: { content } };
     });

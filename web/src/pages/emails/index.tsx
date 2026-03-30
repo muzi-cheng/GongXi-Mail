@@ -16,6 +16,7 @@ import {
     List,
     Tabs,
     Spin,
+    Checkbox,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -29,6 +30,8 @@ import {
     MailOutlined,
     GroupOutlined,
     SyncOutlined,
+    EyeOutlined,
+    EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import { emailApi, groupApi } from '../../api';
 import { getErrorMessage } from '../../utils/error';
@@ -67,6 +70,7 @@ interface EmailGroup {
 interface EmailAccount {
     id: number;
     email: string;
+    hasPassword: boolean;
     clientId: string;
     status: 'ACTIVE' | 'ERROR' | 'DISABLED';
     groupId: number | null;
@@ -104,6 +108,8 @@ const EmailsPage: React.FC = () => {
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [importModalVisible, setImportModalVisible] = useState(false);
+    const [exportModalVisible, setExportModalVisible] = useState(false);
+    const [exportIncludePassword, setExportIncludePassword] = useState(false);
     const [mailModalVisible, setMailModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [keyword, setKeyword] = useState('');
@@ -131,6 +137,9 @@ const EmailsPage: React.FC = () => {
     const [assignGroupModalVisible, setAssignGroupModalVisible] = useState(false);
     const [assignTargetGroupId, setAssignTargetGroupId] = useState<number | undefined>(undefined);
     const [refreshingTokenIds, setRefreshingTokenIds] = useState<Set<number>>(new Set());
+    const [visiblePasswordIds, setVisiblePasswordIds] = useState<Set<number>>(new Set());
+    const [passwordById, setPasswordById] = useState<Record<number, string | null>>({});
+    const [passwordLoadingIds, setPasswordLoadingIds] = useState<Set<number>>(new Set());
     const [batchRefreshing, setBatchRefreshing] = useState(false);
     const latestListRequestIdRef = useRef(0);
 
@@ -329,10 +338,14 @@ const EmailsPage: React.FC = () => {
     };
 
     const handleExport = async () => {
+        setExportModalVisible(true);
+    };
+
+    const handleConfirmExport = async () => {
         try {
             const ids = selectedRowKeys.length > 0 ? selectedRowKeys as number[] : undefined;
             const groupId = ids ? undefined : toOptionalNumber(filterGroupId);
-            const res = await emailApi.export(ids, separator, groupId);
+            const res = await emailApi.export(ids, separator, groupId, exportIncludePassword);
             if (res.code !== 200) {
                 message.error(res.message || '导出失败');
                 return;
@@ -347,6 +360,8 @@ const EmailsPage: React.FC = () => {
             a.click();
             URL.revokeObjectURL(url);
 
+            setExportModalVisible(false);
+            setExportIncludePassword(false);
             message.success('导出成功');
         } catch (err: unknown) {
             message.error(getErrorMessage(err, '导出失败'));
@@ -437,6 +452,51 @@ const EmailsPage: React.FC = () => {
             setBatchRefreshing(false);
         }
     };
+
+    const handleTogglePassword = useCallback(async (record: EmailAccount) => {
+        if (!record.hasPassword) {
+            return;
+        }
+
+        const id = record.id;
+        const isVisible = visiblePasswordIds.has(id);
+
+        if (isVisible) {
+            setVisiblePasswordIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+            return;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(passwordById, id)) {
+            setVisiblePasswordIds((prev) => new Set(prev).add(id));
+            return;
+        }
+
+        setPasswordLoadingIds((prev) => new Set(prev).add(id));
+        try {
+            const res = await emailApi.getPasswordById(id);
+            if (res.code === 200) {
+                setPasswordById((prev) => ({
+                    ...prev,
+                    [id]: res.data?.password ?? null,
+                }));
+                setVisiblePasswordIds((prev) => new Set(prev).add(id));
+            } else {
+                message.error(res.message || '获取密码失败');
+            }
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, '获取密码失败'));
+        } finally {
+            setPasswordLoadingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }
+    }, [passwordById, visiblePasswordIds]);
 
     const handleViewEmailDetail = (record: MailItem) => {
         setEmailDetailSubject(record.subject || '无主题');
@@ -555,19 +615,52 @@ const EmailsPage: React.FC = () => {
             title: '邮箱',
             dataIndex: 'email',
             key: 'email',
+            width: 220,
             ellipsis: true,
+        },
+        {
+            title: '密码',
+            dataIndex: 'hasPassword',
+            key: 'password',
+            width: 130,
+            render: (hasPassword: boolean, record: EmailAccount) => {
+                if (!hasPassword) {
+                    return <Text type="secondary">-</Text>;
+                }
+
+                const visible = visiblePasswordIds.has(record.id);
+                const loadingPwd = passwordLoadingIds.has(record.id);
+                const password = passwordById[record.id] ?? null;
+                return (
+                    <Space size={4}>
+                        <Text code style={{ marginBottom: 0 }}>
+                            {visible ? (password || '***') : '***'}
+                        </Text>
+                        <Tooltip title={visible ? '隐藏密码' : '显示密码'}>
+                            <Button
+                                type="text"
+                                size="small"
+                                loading={loadingPwd}
+                                icon={visible ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                                onClick={() => void handleTogglePassword(record)}
+                            />
+                        </Tooltip>
+                    </Space>
+                );
+            },
         },
         {
             title: '客户端 ID',
             dataIndex: 'clientId',
             key: 'clientId',
+            width: 260,
             ellipsis: true,
         },
         {
             title: '分组',
             dataIndex: 'group',
             key: 'group',
-            width: 120,
+            width: 100,
             render: (group: EmailAccount['group']) =>
                 group ? <Tag color="blue">{group.name}</Tag> : <Tag>未分组</Tag>,
         },
@@ -575,7 +668,7 @@ const EmailsPage: React.FC = () => {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
-            width: 100,
+            width: 80,
             render: (status: string) => {
                 const colors: Record<string, string> = {
                     ACTIVE: 'green',
@@ -594,27 +687,27 @@ const EmailsPage: React.FC = () => {
             title: '最后检查',
             dataIndex: 'lastCheckAt',
             key: 'lastCheckAt',
-            width: 160,
+            width: 130,
             render: (val: string | null) => (val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-'),
         },
         {
             title: 'Token 刷新',
             dataIndex: 'tokenRefreshedAt',
             key: 'tokenRefreshedAt',
-            width: 160,
+            width: 130,
             render: (val: string | null) => (val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-'),
         },
         {
             title: '创建时间',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            width: 160,
+            width: 130,
             render: (val: string) => dayjs(val).format('YYYY-MM-DD HH:mm'),
         },
         {
             title: '操作',
             key: 'action',
-            width: 240,
+            width: 180,
             render: (_: unknown, record: EmailAccount) => (
                 <Space>
                     <Tooltip title="刷新 Token">
@@ -657,7 +750,7 @@ const EmailsPage: React.FC = () => {
                 </Space>
             ),
         },
-    ], [handleDelete, handleEdit, handleRefreshToken, handleViewMails, refreshingTokenIds]);
+    ], [handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, passwordById, passwordLoadingIds, refreshingTokenIds, visiblePasswordIds]);
 
     const rowSelection = useMemo(
         () => ({
@@ -865,8 +958,7 @@ const EmailsPage: React.FC = () => {
                                     loading={loading}
                                     rowSelection={rowSelection}
                                     pagination={tablePagination}
-                                    virtual
-                                    scroll={{ y: 560, x: 1200 }}
+                                    scroll={{ x: 'max-content', y: 560 }}
                                 />
                             </>
                         ),
@@ -950,9 +1042,15 @@ const EmailsPage: React.FC = () => {
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Text type="secondary">
-                            上传文件或粘贴内容。支持多种格式，将尝试自动解析。
+                            上传文件或粘贴内容。系统会自动清洗空白/说明行并自动识别分隔符（识别失败时回退到你填写的分隔符）。
                             <br />
-                            推荐格式：邮箱{separator}密码{separator}客户端ID{separator}刷新令牌
+                            支持以下格式（每行一条）：
+                            <br />
+                            1) 邮箱{separator}客户端ID{separator}刷新令牌
+                            <br />
+                            2) 邮箱{separator}密码{separator}客户端ID{separator}刷新令牌
+                            <br />
+                            3) 兼容历史 5 列格式（将自动识别并导入）
                         </Text>
                     </div>
                     <Input
@@ -975,17 +1073,10 @@ const EmailsPage: React.FC = () => {
                             reader.onload = (e) => {
                                 const fileContent = e.target?.result as string;
                                 if (fileContent) {
-                                    const lines = fileContent.split(/\r?\n/).filter((line: string) => line.trim());
-                                    const processedLines = lines.map((line: string) => {
-                                        const parts = line.split(separator);
-                                        if (parts.length >= 5) {
-                                            return `${parts[0]}${separator}${parts[1]}${separator}${parts[4]}`;
-                                        }
-                                        return line;
-                                    });
-
-                                    setImportContent(processedLines.join('\n'));
-                                    message.success(`文件读取成功，已解析 ${lines.length} 行数据`);
+                                    const normalized = fileContent.replace(/\r\n/g, '\n').trim();
+                                    const lines = normalized ? normalized.split('\n').filter((line: string) => line.trim()) : [];
+                                    setImportContent(normalized);
+                                    message.success(`文件读取成功，共 ${lines.length} 行`);
                                 }
                             };
                             reader.readAsText(file);
@@ -1005,8 +1096,36 @@ const EmailsPage: React.FC = () => {
                         rows={12}
                         value={importContent}
                         onChange={(e) => setImportContent(e.target.value)}
-                        placeholder={`example@outlook.com${separator}client_id${separator}refresh_token`}
+                        placeholder={`example@outlook.com${separator}client_id${separator}refresh_token\nexample2@outlook.com${separator}password${separator}client_id${separator}refresh_token`}
                     />
+                </Space>
+            </Modal>
+
+            {/* 导出选项 Modal */}
+            <Modal
+                title="导出邮箱"
+                open={exportModalVisible}
+                onOk={handleConfirmExport}
+                onCancel={() => {
+                    setExportModalVisible(false);
+                    setExportIncludePassword(false);
+                }}
+                okText="开始导出"
+                cancelText="取消"
+                destroyOnClose
+            >
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Text type="secondary">
+                        默认导出格式：邮箱{separator}客户端ID{separator}刷新令牌
+                        <br />
+                        勾选后导出格式：邮箱{separator}密码{separator}客户端ID{separator}刷新令牌
+                    </Text>
+                    <Checkbox
+                        checked={exportIncludePassword}
+                        onChange={(e) => setExportIncludePassword(e.target.checked)}
+                    >
+                        包含密码（敏感信息，默认不勾选）
+                    </Checkbox>
                 </Space>
             </Modal>
 

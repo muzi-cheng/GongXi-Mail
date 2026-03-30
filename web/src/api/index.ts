@@ -472,6 +472,9 @@ export const emailApi = {
     getById: <T = Record<string, unknown>>(id: number, includeSecrets?: boolean) =>
         requestGet<T>(`/admin/emails/${id}`, { params: { secrets: includeSecrets } }),
 
+    getPasswordById: (id: number) =>
+        requestGet<{ id: number; email: string; password: string | null }>(`/admin/emails/${id}/password`),
+
     create: (data: { email: string; clientId: string; refreshToken: string; password?: string; groupId?: number }) =>
         requestPost<Record<string, unknown>, { email: string; clientId: string; refreshToken: string; password?: string; groupId?: number }>(
             '/admin/emails',
@@ -490,9 +493,9 @@ export const emailApi = {
             }
         ),
 
-    export: (ids?: number[], separator?: string, groupId?: number) =>
+    export: (ids?: number[], separator?: string, groupId?: number, includePassword?: boolean) =>
         requestGet<{ content: string }>('/admin/emails/export', {
-            params: { ids: ids?.join(','), separator, groupId },
+            params: { ids: ids?.join(','), separator, groupId, includePassword },
         }),
 
     update: (id: number, data: { email?: string; clientId?: string; refreshToken?: string; password?: string; status?: string; groupId?: number | null }) =>
