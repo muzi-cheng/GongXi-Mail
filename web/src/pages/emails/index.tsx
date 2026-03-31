@@ -18,6 +18,7 @@ import {
     Tabs,
     Spin,
     Checkbox,
+    Grid,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -38,6 +39,7 @@ import { emailApi, groupApi } from '../../api';
 import { getErrorMessage } from '../../utils/error';
 import { requestData } from '../../utils/request';
 import dayjs from 'dayjs';
+import './index.css';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -103,6 +105,9 @@ interface EmailDetailsResult extends EmailAccount {
 const PASSWORD_MASK = '****************';
 
 const EmailsPage: React.FC = () => {
+    const screens = Grid.useBreakpoint();
+    const useHorizontalScroll = !screens.xl;
+
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<EmailAccount[]>([]);
     const [total, setTotal] = useState(0);
@@ -622,14 +627,13 @@ const EmailsPage: React.FC = () => {
             title: '邮箱',
             dataIndex: 'email',
             key: 'email',
-            width: 360,
             ellipsis: true,
         },
         {
             title: '密码',
             dataIndex: 'hasPassword',
             key: 'password',
-            width: 240,
+            width: 156,
             render: (hasPassword: boolean, record: EmailAccount) => {
                 if (!hasPassword) {
                     return <Text type="secondary">-</Text>;
@@ -672,14 +676,16 @@ const EmailsPage: React.FC = () => {
             title: '客户端 ID',
             dataIndex: 'clientId',
             key: 'clientId',
-            width: 260,
+            width: 160,
             ellipsis: true,
+            responsive: ['lg'],
         },
         {
             title: '分组',
             dataIndex: 'group',
             key: 'group',
-            width: 100,
+            width: 96,
+            responsive: ['lg'],
             render: (group: EmailAccount['group']) =>
                 group ? <Tag color="blue">{group.name}</Tag> : <Tag>未分组</Tag>,
         },
@@ -687,7 +693,7 @@ const EmailsPage: React.FC = () => {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
-            width: 80,
+            width: 84,
             render: (status: string) => {
                 const colors: Record<string, string> = {
                     ACTIVE: 'green',
@@ -706,27 +712,30 @@ const EmailsPage: React.FC = () => {
             title: '最后检查',
             dataIndex: 'lastCheckAt',
             key: 'lastCheckAt',
-            width: 130,
-            render: (val: string | null) => (val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-'),
+            width: 112,
+            responsive: ['xl'],
+            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : '-'),
         },
         {
             title: 'Token 刷新',
             dataIndex: 'tokenRefreshedAt',
             key: 'tokenRefreshedAt',
-            width: 130,
-            render: (val: string | null) => (val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '-'),
+            width: 112,
+            responsive: ['xxl'],
+            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : '-'),
         },
         {
             title: '创建时间',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            width: 130,
-            render: (val: string) => dayjs(val).format('YYYY-MM-DD HH:mm'),
+            width: 112,
+            responsive: ['xxl'],
+            render: (val: string) => dayjs(val).format('MM-DD HH:mm'),
         },
         {
             title: '操作',
             key: 'action',
-            width: 180,
+            width: 156,
             render: (_: unknown, record: EmailAccount) => (
                 <Space>
                     <Tooltip title="刷新 Token">
@@ -928,7 +937,7 @@ const EmailsPage: React.FC = () => {
     // Render
     // ========================================
     return (
-        <div>
+        <div className="emails-page">
             <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
             <Tabs
                 activeKey={activeTab}
@@ -1016,13 +1025,14 @@ const EmailsPage: React.FC = () => {
                                 </div>
 
                                 <Table
+                                    className="emails-table"
                                     columns={columns}
                                     dataSource={data}
                                     rowKey="id"
                                     loading={loading}
                                     rowSelection={rowSelection}
                                     pagination={false}
-                                    scroll={{ x: 'max-content', y: 560 }}
+                                    scroll={useHorizontalScroll ? { x: 960 } : undefined}
                                 />
                             </>
                         ),
@@ -1054,11 +1064,12 @@ const EmailsPage: React.FC = () => {
                                     />
                                 </div>
                                 <Table
+                                    className="email-groups-table"
                                     columns={groupColumns}
                                     dataSource={pagedGroups}
                                     rowKey="id"
                                     pagination={false}
-                                    scroll={{ x: 'max-content', y: 560 }}
+                                    scroll={useHorizontalScroll ? { x: 760 } : undefined}
                                 />
                             </>
                         ),

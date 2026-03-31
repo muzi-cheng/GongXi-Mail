@@ -1,0 +1,11 @@
+.emails-page .emails-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #f1f5f9 !important;
+}
+
+.emails-page .emails-table .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+  background: #e2e8f0 !important;
+}
+
+.emails-page .emails-table .ant-table-tbody > tr > td {
+  transition: background-color 0.2s ease;
+}
