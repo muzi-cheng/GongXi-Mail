@@ -9,3 +9,14 @@
 .emails-page .emails-table .ant-table-tbody > tr > td {
   transition: background-color 0.2s ease;
 }
+
+.emails-page .emails-table-scroll-wrapper {
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.emails-page .emails-table-scroll-wrapper--horizontal {
+  overflow-x: auto;
+}

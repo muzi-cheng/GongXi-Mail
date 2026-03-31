@@ -837,11 +837,8 @@ const EmailsPage: React.FC = () => {
     );
 
     const emailTableScroll = useMemo(
-        () => ({
-            y: tableScrollY,
-            ...(useHorizontalScroll ? { x: 960 } : {}),
-        }),
-        [tableScrollY, useHorizontalScroll]
+        () => (useHorizontalScroll ? { x: 960 } : undefined),
+        [useHorizontalScroll]
     );
 
     const filteredGroups = useMemo(() => {
@@ -1065,7 +1062,11 @@ const EmailsPage: React.FC = () => {
                                     />
                                 </div>
 
-                                <div ref={tableWrapperRef}>
+                                <div
+                                    ref={tableWrapperRef}
+                                    className={`emails-table-scroll-wrapper${useHorizontalScroll ? ' emails-table-scroll-wrapper--horizontal' : ''}`}
+                                    style={{ maxHeight: tableScrollY }}
+                                >
                                     <Table
                                         className="emails-table"
                                         columns={columns}
