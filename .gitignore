@@ -10,6 +10,9 @@ web/dist/
 .env.*
 !.env.example
 
+docker-compose.yml
+!docker-compose.yml.example
+
 # Logs
 *.log
 npm-debug.log*
