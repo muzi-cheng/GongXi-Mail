@@ -103,6 +103,8 @@ interface EmailDetailsResult extends EmailAccount {
 }
 
 const PASSWORD_MASK = '****************';
+const MIN_EMAIL_TABLE_SCROLL_Y = 320;
+const EMAIL_TABLE_BOTTOM_GAP = 32;
 
 const EmailsPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
@@ -153,7 +155,9 @@ const EmailsPage: React.FC = () => {
     const [groupKeyword, setGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
     const [groupPageSize, setGroupPageSize] = useState(10);
+    const [tableScrollY, setTableScrollY] = useState<number>(MIN_EMAIL_TABLE_SCROLL_Y);
     const latestListRequestIdRef = useRef(0);
+    const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const toOptionalNumber = (value: unknown): number | undefined => {
         if (value === undefined || value === null || value === '') {
@@ -214,6 +218,35 @@ const EmailsPage: React.FC = () => {
         }, 0);
         return () => window.clearTimeout(timer);
     }, [fetchData]);
+
+    const updateTableScrollY = useCallback(() => {
+        const container = tableWrapperRef.current;
+        if (!container) {
+            return;
+        }
+
+        const rect = container.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const availableHeight = Math.floor(viewportHeight - rect.top - EMAIL_TABLE_BOTTOM_GAP);
+        setTableScrollY(Math.max(MIN_EMAIL_TABLE_SCROLL_Y, availableHeight));
+    }, []);
+
+    useEffect(() => {
+        if (activeTab !== 'emails') {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            updateTableScrollY();
+        }, 0);
+
+        window.addEventListener('resize', updateTableScrollY);
+
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener('resize', updateTableScrollY);
+        };
+    }, [activeTab, updateTableScrollY, selectedRowKeys.length, pageSize, data.length]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -803,6 +836,14 @@ const EmailsPage: React.FC = () => {
         [page, pageSize, total]
     );
 
+    const emailTableScroll = useMemo(
+        () => ({
+            y: tableScrollY,
+            ...(useHorizontalScroll ? { x: 960 } : {}),
+        }),
+        [tableScrollY, useHorizontalScroll]
+    );
+
     const filteredGroups = useMemo(() => {
         const kw = groupKeyword.trim().toLowerCase();
         if (!kw) {
@@ -1024,16 +1065,18 @@ const EmailsPage: React.FC = () => {
                                     />
                                 </div>
 
-                                <Table
-                                    className="emails-table"
-                                    columns={columns}
-                                    dataSource={data}
-                                    rowKey="id"
-                                    loading={loading}
-                                    rowSelection={rowSelection}
-                                    pagination={false}
-                                    scroll={useHorizontalScroll ? { x: 960 } : undefined}
-                                />
+                                <div ref={tableWrapperRef}>
+                                    <Table
+                                        className="emails-table"
+                                        columns={columns}
+                                        dataSource={data}
+                                        rowKey="id"
+                                        loading={loading}
+                                        rowSelection={rowSelection}
+                                        pagination={false}
+                                        scroll={emailTableScroll}
+                                    />
+                                </div>
                             </>
                         ),
                     },
