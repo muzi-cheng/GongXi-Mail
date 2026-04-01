@@ -609,8 +609,8 @@ export const emailApi = {
 // ========================================
 
 export const groupApi = {
-    getList: <T = Record<string, unknown>>() =>
-        requestGet<T[]>('/admin/email-groups', { cacheMs: 5000 }),
+    getList: <T = Record<string, unknown>>(params?: { keyword?: string }) =>
+        requestGet<T[]>('/admin/email-groups', { params, cacheMs: 5000 }),
 
     getById: (id: number) =>
         requestGet<Record<string, unknown>>(`/admin/email-groups/${id}`),

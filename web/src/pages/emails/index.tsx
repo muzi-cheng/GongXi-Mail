@@ -239,8 +239,11 @@ const EmailsPage: React.FC = () => {
     const [batchRefreshing, setBatchRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'emails' | 'tags' | 'groups'>('emails');
     const [groupKeyword, setGroupKeyword] = useState('');
+    const [debouncedGroupKeyword, setDebouncedGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
     const [groupPageSize, setGroupPageSize] = useState(10);
+    const [groupItems, setGroupItems] = useState<EmailGroup[]>([]);
+    const [groupListLoading, setGroupListLoading] = useState(false);
     const [tagItems, setTagItems] = useState<EmailTagItem[]>([]);
     const [tagTotal, setTagTotal] = useState(0);
     const [tagPage, setTagPage] = useState(1);
@@ -259,6 +262,7 @@ const EmailsPage: React.FC = () => {
     const [groupSubmitting, setGroupSubmitting] = useState(false);
     const latestListRequestIdRef = useRef(0);
     const latestTagListRequestIdRef = useRef(0);
+    const latestGroupListRequestIdRef = useRef(0);
 
     const toOptionalNumber = (value: unknown): number | undefined => {
         if (value === undefined || value === null || value === '') {
@@ -333,6 +337,31 @@ const EmailsPage: React.FC = () => {
         setTagListLoading(false);
     }, [debouncedTagManageKeyword, tagPage, tagPageSize]);
 
+    const fetchGroupData = useCallback(async () => {
+        const currentRequestId = ++latestGroupListRequestIdRef.current;
+        setGroupListLoading(true);
+
+        const params = debouncedGroupKeyword
+            ? { keyword: debouncedGroupKeyword }
+            : undefined;
+
+        const result = await requestData<EmailGroup[]>(
+            () => groupApi.getList(params),
+            '获取分组列表失败',
+            { silent: true }
+        );
+
+        if (currentRequestId !== latestGroupListRequestIdRef.current) {
+            return;
+        }
+
+        if (result) {
+            setGroupItems(result);
+        }
+
+        setGroupListLoading(false);
+    }, [debouncedGroupKeyword]);
+
     useEffect(() => {
         const timer = window.setTimeout(() => {
             void fetchGroups();
@@ -362,12 +391,23 @@ const EmailsPage: React.FC = () => {
     }, [tagManageKeyword]);
 
     useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedGroupKeyword(groupKeyword.trim());
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [groupKeyword]);
+
+    useEffect(() => {
         setPage(1);
     }, [debouncedKeyword, debouncedTagKeyword]);
 
     useEffect(() => {
         setTagPage(1);
     }, [debouncedTagManageKeyword]);
+
+    useEffect(() => {
+        setGroupPage(1);
+    }, [debouncedGroupKeyword]);
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -387,6 +427,18 @@ const EmailsPage: React.FC = () => {
 
         return () => window.clearTimeout(timer);
     }, [activeTab, fetchTagData]);
+
+    useEffect(() => {
+        if (activeTab !== 'groups') {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            void fetchGroupData();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+    }, [activeTab, fetchGroupData, groups]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -1257,38 +1309,22 @@ const EmailsPage: React.FC = () => {
 
     const emailTableScroll = useMemo(() => ({ x: 'max-content' }), []);
 
-    const filteredGroups = useMemo(() => {
-        const kw = groupKeyword.trim().toLowerCase();
-        if (!kw) {
-            return groups;
-        }
-        return groups.filter((group: EmailGroup) => {
-            const name = group.name?.toLowerCase() || '';
-            const description = group.description?.toLowerCase() || '';
-            return name.includes(kw) || description.includes(kw);
-        });
-    }, [groupKeyword, groups]);
-
     const pagedGroups = useMemo(() => {
         const start = (groupPage - 1) * groupPageSize;
-        return filteredGroups.slice(start, start + groupPageSize);
-    }, [filteredGroups, groupPage, groupPageSize]);
+        return groupItems.slice(start, start + groupPageSize);
+    }, [groupItems, groupPage, groupPageSize]);
 
     useEffect(() => {
-        setGroupPage(1);
-    }, [groupKeyword]);
-
-    useEffect(() => {
-        const maxPage = Math.max(1, Math.ceil(filteredGroups.length / groupPageSize));
+        const maxPage = Math.max(1, Math.ceil(groupItems.length / groupPageSize));
         if (groupPage > maxPage) {
             setGroupPage(maxPage);
         }
-    }, [filteredGroups.length, groupPage, groupPageSize]);
+    }, [groupItems.length, groupPage, groupPageSize]);
 
     useEffect(() => {
-        const validGroupIds = new Set(groups.map((group) => group.id));
+        const validGroupIds = new Set(groupItems.map((group) => group.id));
         setSelectedGroupRowKeys((prev) => prev.filter((key) => validGroupIds.has(Number(key))));
-    }, [groups]);
+    }, [groupItems]);
 
     useEffect(() => {
         const validTagIds = new Set(tagItems.map((tag) => tag.id));
@@ -1684,7 +1720,7 @@ const EmailsPage: React.FC = () => {
                                     <Pagination
                                         current={groupPage}
                                         pageSize={groupPageSize}
-                                        total={filteredGroups.length}
+                                        total={groupItems.length}
                                         showSizeChanger
                                         showTotal={(count: number) => `共 ${count} 条`}
                                         onChange={(currentPage: number, currentPageSize: number) => {
@@ -1698,6 +1734,7 @@ const EmailsPage: React.FC = () => {
                                     columns={groupColumns}
                                     dataSource={pagedGroups}
                                     rowKey="id"
+                                    loading={groupListLoading}
                                     rowSelection={groupRowSelection}
                                     pagination={false}
                                     scroll={useHorizontalScroll ? { x: 760 } : undefined}

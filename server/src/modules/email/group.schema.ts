@@ -19,11 +19,16 @@ export const updateGroupSchema = z.object({
     fetchStrategy: mailFetchStrategySchema.optional(),
 });
 
+export const listGroupSchema = z.object({
+    keyword: z.string().trim().optional(),
+});
+
 export const assignEmailsSchema = z.object({
     emailIds: z.array(z.number().int().positive()),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
+export type ListGroupInput = z.infer<typeof listGroupSchema>;
 export type AssignEmailsInput = z.infer<typeof assignEmailsSchema>;
 export type MailFetchStrategyInput = z.infer<typeof mailFetchStrategySchema>;

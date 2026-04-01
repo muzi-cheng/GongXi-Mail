@@ -1,14 +1,15 @@
 import { type FastifyPluginAsync } from 'fastify';
 import { groupService } from './group.service.js';
-import { createGroupSchema, updateGroupSchema, assignEmailsSchema } from './group.schema.js';
+import { createGroupSchema, updateGroupSchema, assignEmailsSchema, listGroupSchema } from './group.schema.js';
 
 const groupRoutes: FastifyPluginAsync = async (fastify) => {
     // 所有路由需要管理员认证
     fastify.addHook('preHandler', fastify.authenticateJwt);
 
     // 获取分组列表
-    fastify.get('/', async () => {
-        const groups = await groupService.list();
+    fastify.get('/', async (request) => {
+        const input = listGroupSchema.parse(request.query);
+        const groups = await groupService.list(input);
         return { success: true, data: groups };
     });
 

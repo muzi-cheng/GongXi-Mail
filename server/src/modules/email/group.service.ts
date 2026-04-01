@@ -1,13 +1,22 @@
 import prisma from '../../lib/prisma.js';
 import { AppError } from '../../plugins/error.js';
-import type { CreateGroupInput, UpdateGroupInput } from './group.schema.js';
+import type { CreateGroupInput, UpdateGroupInput, ListGroupInput } from './group.schema.js';
 
 export const groupService = {
     /**
      * 获取所有分组（含邮箱计数）
      */
-    async list() {
+    async list(input?: ListGroupInput) {
+        const keyword = input?.keyword?.trim();
         const groups = await prisma.emailGroup.findMany({
+            where: keyword
+                ? {
+                    OR: [
+                        { name: { contains: keyword, mode: 'insensitive' } },
+                        { description: { contains: keyword, mode: 'insensitive' } },
+                    ],
+                }
+                : undefined,
             include: {
                 _count: { select: { emails: true } },
             },
