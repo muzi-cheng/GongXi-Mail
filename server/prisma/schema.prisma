@@ -80,6 +80,7 @@ model EmailAccount {
   id           Int         @id @default(autoincrement())
   email        String      @unique @db.VarChar(255)
   clientId     String      @map("client_id") @db.VarChar(100)
+  tags         String[]    @default([])
   password     String?     @db.VarChar(255)
   refreshToken String      @map("refresh_token") @db.Text
   status       EmailStatus @default(ACTIVE)

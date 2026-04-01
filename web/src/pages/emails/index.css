@@ -53,3 +53,49 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.emails-page .emails-table .emails-table__tag {
+  margin-inline-end: 0;
+}
+
+.emails-page__toolbar {
+  align-items: center;
+}
+
+.emails-page__toolbar-batch {
+  display: none;
+}
+
+.emails-page__toolbar-batch.is-active {
+  display: inline-flex;
+}
+
+.emails-page__toolbar .ant-btn,
+.emails-page__toolbar .ant-btn::before,
+.emails-page__toolbar .ant-btn::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+.emails-page__toolbar .ant-wave {
+  display: none !important;
+}
+
+.emails-page__toolbar-neutral,
+.emails-page__toolbar-neutral:hover,
+.emails-page__toolbar-neutral:focus,
+.emails-page__toolbar-neutral:active {
+  background: #ffffff !important;
+  border-color: #d9d9d9 !important;
+  box-shadow: none !important;
+}
+
+.emails-page__toolbar-primary,
+.emails-page__toolbar-primary:hover,
+.emails-page__toolbar-primary:focus,
+.emails-page__toolbar-primary:active {
+  color: #ffffff !important;
+  background: #0f172a !important;
+  border-color: #0f172a !important;
+  box-shadow: none !important;
+}

@@ -14,6 +14,15 @@ type ParsedImportLine = {
     password?: string;
 };
 
+const normalizeTags = (tags?: string[] | null): string[] =>
+    Array.from(
+        new Set(
+            (tags ?? [])
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+        )
+    );
+
 const normalizeImportText = (content: string): string =>
     content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
@@ -123,6 +132,7 @@ export const emailService = {
                     id: true,
                     email: true,
                     clientId: true,
+                    tags: true,
                     password: true,
                     status: true,
                     groupId: true,
@@ -143,6 +153,7 @@ export const emailService = {
             id: item.id,
             email: item.email,
             clientId: item.clientId,
+            tags: item.tags,
             hasPassword: !!item.password,
             status: item.status,
             groupId: item.groupId,
@@ -166,6 +177,7 @@ export const emailService = {
                 id: true,
                 email: true,
                 clientId: true,
+                tags: true,
                 refreshToken: !!includeSecrets,
                 status: true,
                 groupId: true,
@@ -227,6 +239,7 @@ export const emailService = {
                 id: true,
                 email: true,
                 clientId: true,
+                tags: true,
                 refreshToken: true,
                 password: true,
                 status: true,
@@ -256,7 +269,7 @@ export const emailService = {
      * 创建邮箱账户
      */
     async create(input: CreateEmailInput) {
-        const { email, clientId, refreshToken, password, groupId } = input;
+        const { email, clientId, refreshToken, password, groupId, tags } = input;
 
         const exists = await prisma.emailAccount.findUnique({ where: { email } });
         if (exists) {
@@ -270,6 +283,7 @@ export const emailService = {
             data: {
                 email,
                 clientId,
+                tags: normalizeTags(tags),
                 refreshToken: encryptedToken,
                 password: encryptedPassword,
                 groupId: groupId || null,
@@ -278,6 +292,7 @@ export const emailService = {
                 id: true,
                 email: true,
                 clientId: true,
+                tags: true,
                 status: true,
                 groupId: true,
                 createdAt: true,
@@ -296,8 +311,8 @@ export const emailService = {
             throw new AppError('NOT_FOUND', 'Email account not found', 404);
         }
 
-        const { refreshToken, password, ...rest } = input;
-        const updateData: Prisma.EmailAccountUpdateInput = { ...rest };
+        const { refreshToken, password, tags, ...rest } = input;
+        const updateData: Prisma.EmailAccountUncheckedUpdateInput = { ...rest };
 
         // 加密 sensitive data
         if (refreshToken) {
@@ -305,6 +320,9 @@ export const emailService = {
         }
         if (password) {
             updateData.password = encrypt(password);
+        }
+        if (tags !== undefined) {
+            updateData.tags = normalizeTags(tags);
         }
 
         const account = await prisma.emailAccount.update({
@@ -314,6 +332,7 @@ export const emailService = {
                 id: true,
                 email: true,
                 clientId: true,
+                tags: true,
                 status: true,
                 updatedAt: true,
             },

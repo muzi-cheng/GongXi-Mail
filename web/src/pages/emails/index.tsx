@@ -75,6 +75,7 @@ interface EmailAccount {
     email: string;
     hasPassword: boolean;
     clientId: string;
+    tags: string[];
     status: 'ACTIVE' | 'ERROR' | 'DISABLED';
     groupId: number | null;
     group: { id: number; name: string } | null;
@@ -105,6 +106,30 @@ interface EmailDetailsResult extends EmailAccount {
 const EMAIL_COLUMN_WIDTH = 240;
 const PASSWORD_MASK = '****************';
 const EMAIL_TABLE_STICKY_OFFSET = 56;
+
+const normalizeTagValues = (value: unknown): string[] => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const seen = new Set<string>();
+
+    return value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => {
+            if (!item) {
+                return false;
+            }
+
+            const normalizedKey = item.toLowerCase();
+            if (seen.has(normalizedKey)) {
+                return false;
+            }
+
+            seen.add(normalizedKey);
+            return true;
+        });
+};
 
 const fallbackCopyText = (value: string): boolean => {
     if (typeof document === 'undefined') {
@@ -246,6 +271,7 @@ const EmailsPage: React.FC = () => {
         setEditingId(null);
         setEmailEditLoading(false);
         form.resetFields();
+        form.setFieldsValue({ status: 'ACTIVE', tags: [] });
         setModalVisible(true);
     };
 
@@ -264,6 +290,7 @@ const EmailsPage: React.FC = () => {
                     refreshToken: details.refreshToken,
                     status: details.status,
                     groupId: details.groupId,
+                    tags: details.tags || [],
                 });
             }
         } catch {
@@ -314,10 +341,12 @@ const EmailsPage: React.FC = () => {
             const values = await form.validateFields();
             const normalizedGroupId =
                 values.groupId === null ? null : toOptionalNumber(values.groupId);
+            const normalizedTags = normalizeTagValues(values.tags);
 
             if (editingId) {
                 const submitData = {
                     ...values,
+                    tags: normalizedTags,
                     groupId: normalizedGroupId ?? null,
                 };
                 const res = await emailApi.update(editingId, submitData);
@@ -332,6 +361,7 @@ const EmailsPage: React.FC = () => {
             } else {
                 const submitData = {
                     ...values,
+                    tags: normalizedTags,
                     groupId: toOptionalNumber(values.groupId),
                 };
                 const res = await emailApi.create(submitData);
@@ -676,25 +706,16 @@ const EmailsPage: React.FC = () => {
             width: EMAIL_COLUMN_WIDTH,
             className: 'emails-table__email-column',
             render: (email: string) => (
-                <Tooltip
-                    title={(
-                        <>
-                            <div>点击复制邮箱</div>
-                            <div>{email}</div>
-                        </>
-                    )}
+                <button
+                    type="button"
+                    className="emails-table__email-button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        void handleCopyEmail(email);
+                    }}
                 >
-                    <button
-                        type="button"
-                        className="emails-table__email-button"
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            void handleCopyEmail(email);
-                        }}
-                    >
-                        <span className="emails-table__email-text">{email}</span>
-                    </button>
-                </Tooltip>
+                    <span className="emails-table__email-text">{email}</span>
+                </button>
             ),
         },
         {
@@ -742,12 +763,28 @@ const EmailsPage: React.FC = () => {
             },
         },
         {
-            title: '客户端 ID',
-            dataIndex: 'clientId',
-            key: 'clientId',
-            width: 160,
-            ellipsis: true,
+            title: '标签',
+            dataIndex: 'tags',
+            key: 'tags',
+            width: 220,
             responsive: ['lg'],
+            render: (tags: string[] | undefined) => {
+                const normalizedTags = tags || [];
+
+                if (normalizedTags.length === 0) {
+                    return <Text type="secondary">-</Text>;
+                }
+
+                return (
+                    <Space size={[0, 4]} wrap>
+                        {normalizedTags.map((tag) => (
+                            <Tag key={tag} color="geekblue" className="emails-table__tag">
+                                {tag}
+                            </Tag>
+                        ))}
+                    </Space>
+                );
+            },
         },
         {
             title: '分组',
@@ -1007,6 +1044,9 @@ const EmailsPage: React.FC = () => {
     // ========================================
     // Render
     // ========================================
+    const selectedCount = selectedRowKeys.length;
+    const hasSelection = selectedCount > 0;
+
     return (
         <div className="emails-page">
             <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
@@ -1017,37 +1057,55 @@ const EmailsPage: React.FC = () => {
                 destroyInactiveTabPane
                 tabBarExtraContent={
                     activeTab === 'emails' ? (
-                        <Space wrap>
+                        <Space wrap className="emails-page__toolbar">
                             <Button
+                                key="refresh-all"
                                 icon={<SyncOutlined spin={batchRefreshing} />}
                                 onClick={handleBatchRefreshTokens}
                                 loading={batchRefreshing}
                             >
                                 刷新全部 Token
                             </Button>
-                            <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
+                            <Button key="import" icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
                                 导入
                             </Button>
-                            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                            <Button key="export" icon={<DownloadOutlined />} onClick={handleExport}>
                                 导出
                             </Button>
-                            {selectedRowKeys.length > 0 && (
-                                <>
-                                    <Button icon={<GroupOutlined />} onClick={() => setAssignGroupModalVisible(true)}>
-                                        分配分组 ({selectedRowKeys.length})
+                            <div className={`emails-page__toolbar-batch${hasSelection ? ' is-active' : ''}`}>
+                                <Space wrap size={8}>
+                                    <Button
+                                        key="assign-group"
+                                        className="emails-page__toolbar-neutral"
+                                        icon={<GroupOutlined />}
+                                        onClick={() => setAssignGroupModalVisible(true)}
+                                    >
+                                        分配分组 ({selectedCount})
                                     </Button>
-                                    <Button onClick={handleBatchRemoveGroup}>
-                                        移出分组 ({selectedRowKeys.length})
+                                    <Button
+                                        key="remove-group"
+                                        className="emails-page__toolbar-neutral"
+                                        onClick={handleBatchRemoveGroup}
+                                    >
+                                        移出分组 ({selectedCount})
                                     </Button>
                                     <Popconfirm
-                                        title={`确定要删除选中的 ${selectedRowKeys.length} 个邮箱吗？`}
+                                        title={`确定要删除选中的 ${selectedCount} 个邮箱吗？`}
                                         onConfirm={handleBatchDelete}
                                     >
-                                        <Button danger>批量删除 ({selectedRowKeys.length})</Button>
+                                        <Button key="batch-delete" danger className="emails-page__toolbar-neutral">
+                                            批量删除 ({selectedCount})
+                                        </Button>
                                     </Popconfirm>
-                                </>
-                            )}
-                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                                </Space>
+                            </div>
+                            <Button
+                                key="create-email"
+                                type="primary"
+                                className="emails-page__toolbar-primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleCreate}
+                            >
                                 添加邮箱
                             </Button>
                         </Space>
@@ -1174,6 +1232,14 @@ const EmailsPage: React.FC = () => {
                         rules={[{ required: true, message: '请输入客户端 ID' }]}
                     >
                         <Input placeholder="Azure AD 应用程序 ID" />
+                    </Form.Item>
+                    <Form.Item name="tags" label="标签">
+                        <Select
+                            mode="tags"
+                            allowClear
+                            tokenSeparators={[',', '，', ';', '；']}
+                            placeholder="可输入多个标签，按回车确认"
+                        />
                     </Form.Item>
                     <Form.Item
                         name="refreshToken"

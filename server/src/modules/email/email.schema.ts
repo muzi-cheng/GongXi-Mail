@@ -1,11 +1,14 @@
 import { z } from 'zod';
 
+const emailTagsSchema = z.array(z.string().trim().min(1).max(50)).max(50);
+
 export const createEmailSchema = z.object({
     email: z.string().email(),
     clientId: z.string().min(1),
     refreshToken: z.string().min(1),
     password: z.string().optional(),
     groupId: z.coerce.number().int().positive().optional(),
+    tags: emailTagsSchema.optional(),
 });
 
 export const updateEmailSchema = z.object({
@@ -15,6 +18,7 @@ export const updateEmailSchema = z.object({
     password: z.string().optional(),
     status: z.enum(['ACTIVE', 'ERROR', 'DISABLED']).optional(),
     groupId: z.union([z.coerce.number().int().positive(), z.null()]).optional(),
+    tags: emailTagsSchema.optional(),
 });
 
 export const listEmailSchema = z.object({
