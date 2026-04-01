@@ -70,6 +70,31 @@
   display: inline-flex;
 }
 
+.emails-page__batch-tag-select {
+  min-width: 280px;
+}
+
+.emails-page__batch-tag-select .ant-select-selector {
+  min-height: 32px;
+}
+
+.emails-page__tag-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emails-page__tag-tip {
+  white-space: nowrap;
+}
+
+.emails-page .email-tags-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #f1f5f9 !important;
+}
+
 .emails-page__toolbar .ant-btn,
 .emails-page__toolbar .ant-btn::before,
 .emails-page__toolbar .ant-btn::after {

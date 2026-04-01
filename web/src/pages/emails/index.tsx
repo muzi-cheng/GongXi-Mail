@@ -90,6 +90,16 @@ interface EmailListResult {
     total: number;
 }
 
+interface EmailTagItem {
+    tag: string;
+    emailCount: number;
+}
+
+interface EmailTagListResult {
+    list: EmailTagItem[];
+    total: number;
+}
+
 interface MailItem {
     id: string;
     from: string;
@@ -174,6 +184,8 @@ const EmailsPage: React.FC = () => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [keyword, setKeyword] = useState('');
     const [debouncedKeyword, setDebouncedKeyword] = useState('');
+    const [tagKeyword, setTagKeyword] = useState('');
+    const [debouncedTagKeyword, setDebouncedTagKeyword] = useState('');
     const [filterGroupId, setFilterGroupId] = useState<number | undefined>(undefined);
     const [importContent, setImportContent] = useState('');
     const [separator, setSeparator] = useState('----');
@@ -201,11 +213,23 @@ const EmailsPage: React.FC = () => {
     const [passwordById, setPasswordById] = useState<Record<number, string | null>>({});
     const [passwordLoadingIds, setPasswordLoadingIds] = useState<Set<number>>(new Set());
     const [batchRefreshing, setBatchRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'emails' | 'groups'>('emails');
+    const [activeTab, setActiveTab] = useState<'emails' | 'groups' | 'tags'>('emails');
     const [groupKeyword, setGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
     const [groupPageSize, setGroupPageSize] = useState(10);
+    const [tagItems, setTagItems] = useState<EmailTagItem[]>([]);
+    const [tagTotal, setTagTotal] = useState(0);
+    const [tagPage, setTagPage] = useState(1);
+    const [tagPageSize, setTagPageSize] = useState(10);
+    const [tagListLoading, setTagListLoading] = useState(false);
+    const [tagManageKeyword, setTagManageKeyword] = useState('');
+    const [debouncedTagManageKeyword, setDebouncedTagManageKeyword] = useState('');
+    const [selectedTagRowKeys, setSelectedTagRowKeys] = useState<React.Key[]>([]);
+    const [batchAddTagValues, setBatchAddTagValues] = useState<string[]>([]);
+    const [batchAddTagLoading, setBatchAddTagLoading] = useState(false);
+    const [batchDeleteTagLoading, setBatchDeleteTagLoading] = useState(false);
     const latestListRequestIdRef = useRef(0);
+    const latestTagListRequestIdRef = useRef(0);
 
     const toOptionalNumber = (value: unknown): number | undefined => {
         if (value === undefined || value === null || value === '') {
@@ -229,7 +253,12 @@ const EmailsPage: React.FC = () => {
     const fetchData = useCallback(async () => {
         const currentRequestId = ++latestListRequestIdRef.current;
         setLoading(true);
-        const params: { page: number; pageSize: number; keyword: string; groupId?: number } = { page, pageSize, keyword: debouncedKeyword };
+        const params: { page: number; pageSize: number; keyword: string; tagKeyword?: string; groupId?: number } = {
+            page,
+            pageSize,
+            keyword: debouncedKeyword,
+        };
+        if (debouncedTagKeyword) params.tagKeyword = debouncedTagKeyword;
         if (filterGroupId !== undefined) params.groupId = filterGroupId;
 
         const result = await requestData<EmailListResult>(
@@ -244,7 +273,36 @@ const EmailsPage: React.FC = () => {
             setTotal(result.total);
         }
         setLoading(false);
-    }, [debouncedKeyword, filterGroupId, page, pageSize]);
+    }, [debouncedKeyword, debouncedTagKeyword, filterGroupId, page, pageSize]);
+
+    const fetchTagData = useCallback(async () => {
+        const currentRequestId = ++latestTagListRequestIdRef.current;
+        setTagListLoading(true);
+
+        const params: { page: number; pageSize: number; keyword?: string } = {
+            page: tagPage,
+            pageSize: tagPageSize,
+        };
+        if (debouncedTagManageKeyword) {
+            params.keyword = debouncedTagManageKeyword;
+        }
+
+        const result = await requestData<EmailTagListResult>(
+            () => emailApi.getTagList(params),
+            '获取标签列表失败'
+        );
+
+        if (currentRequestId !== latestTagListRequestIdRef.current) {
+            return;
+        }
+
+        if (result) {
+            setTagItems(result.list || []);
+            setTagTotal(result.total || 0);
+        }
+
+        setTagListLoading(false);
+    }, [debouncedTagManageKeyword, tagPage, tagPageSize]);
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -262,10 +320,44 @@ const EmailsPage: React.FC = () => {
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
+            setDebouncedTagKeyword(tagKeyword.trim());
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [tagKeyword]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedTagManageKeyword(tagManageKeyword.trim());
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [tagManageKeyword]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedKeyword, debouncedTagKeyword]);
+
+    useEffect(() => {
+        setTagPage(1);
+    }, [debouncedTagManageKeyword]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
             void fetchData();
         }, 0);
         return () => window.clearTimeout(timer);
     }, [fetchData]);
+
+    useEffect(() => {
+        if (activeTab !== 'tags') {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            void fetchTagData();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+    }, [activeTab, fetchTagData]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -695,6 +787,65 @@ const EmailsPage: React.FC = () => {
         }
     };
 
+    const handleBatchAddTags = async () => {
+        const emailIds = selectedRowKeys
+            .map((key) => Number(key))
+            .filter((id) => Number.isInteger(id) && id > 0);
+        if (emailIds.length === 0) {
+            message.warning('请先选择邮箱');
+            return;
+        }
+
+        const normalizedTags = normalizeTagValues(batchAddTagValues);
+        if (normalizedTags.length === 0) {
+            message.warning('请先输入要添加的标签');
+            return;
+        }
+
+        setBatchAddTagLoading(true);
+        try {
+            const res = await emailApi.batchAddTags(emailIds, normalizedTags);
+            if (res.code === 200) {
+                message.success(`成功为 ${res.data.updated} 个邮箱添加标签`);
+                setBatchAddTagValues([]);
+                setSelectedRowKeys([]);
+                fetchData();
+                fetchTagData();
+            } else {
+                message.error(res.message || '批量添加标签失败');
+            }
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, '批量添加标签失败'));
+        } finally {
+            setBatchAddTagLoading(false);
+        }
+    };
+
+    const handleBatchDeleteTags = async () => {
+        const tags = normalizeTagValues(selectedTagRowKeys.map((key) => String(key)));
+        if (tags.length === 0) {
+            message.warning('请先选择标签');
+            return;
+        }
+
+        setBatchDeleteTagLoading(true);
+        try {
+            const res = await emailApi.batchDeleteTags(tags);
+            if (res.code === 200) {
+                message.success(`成功删除 ${tags.length} 个标签，影响 ${res.data.updated} 个邮箱`);
+                setSelectedTagRowKeys([]);
+                fetchData();
+                fetchTagData();
+            } else {
+                message.error(res.message || '批量删除标签失败');
+            }
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, '批量删除标签失败'));
+        } finally {
+            setBatchDeleteTagLoading(false);
+        }
+    };
+
     // ========================================
     // Email table columns
     // ========================================
@@ -894,6 +1045,14 @@ const EmailsPage: React.FC = () => {
         [selectedRowKeys]
     );
 
+    const tagRowSelection = useMemo(
+        () => ({
+            selectedRowKeys: selectedTagRowKeys,
+            onChange: (keys: React.Key[]) => setSelectedTagRowKeys(keys),
+        }),
+        [selectedTagRowKeys]
+    );
+
     const tablePagination = useMemo(
         () => ({
             current: page,
@@ -1041,18 +1200,35 @@ const EmailsPage: React.FC = () => {
         },
     ], [handleDeleteGroup, handleEditGroup]);
 
+    const tagColumns: ColumnsType<EmailTagItem> = useMemo(() => [
+        {
+            title: '标签',
+            dataIndex: 'tag',
+            key: 'tag',
+            render: (tag: string) => <Tag color="geekblue">{tag}</Tag>,
+        },
+        {
+            title: '关联邮箱数',
+            dataIndex: 'emailCount',
+            key: 'emailCount',
+            width: 140,
+        },
+    ], []);
+
     // ========================================
     // Render
     // ========================================
     const selectedCount = selectedRowKeys.length;
     const hasSelection = selectedCount > 0;
+    const selectedTagCount = selectedTagRowKeys.length;
+    const hasTagSelection = selectedTagCount > 0;
 
     return (
         <div className="emails-page">
             <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
             <Tabs
                 activeKey={activeTab}
-                onChange={(key) => setActiveTab(key as 'emails' | 'groups')}
+                onChange={(key) => setActiveTab(key as 'emails' | 'groups' | 'tags')}
                 animated={false}
                 destroyInactiveTabPane
                 tabBarExtraContent={
@@ -1074,6 +1250,24 @@ const EmailsPage: React.FC = () => {
                             </Button>
                             <div className={`emails-page__toolbar-batch${hasSelection ? ' is-active' : ''}`}>
                                 <Space wrap size={8}>
+                                    <Select
+                                        mode="tags"
+                                        className="emails-page__batch-tag-select"
+                                        placeholder="输入标签后回车，批量添加到已选邮箱"
+                                        value={batchAddTagValues}
+                                        allowClear
+                                        tokenSeparators={[',', '，', ';', '；']}
+                                        onChange={(values: string[]) => setBatchAddTagValues(normalizeTagValues(values))}
+                                    />
+                                    <Button
+                                        key="batch-add-tags"
+                                        className="emails-page__toolbar-neutral"
+                                        onClick={handleBatchAddTags}
+                                        loading={batchAddTagLoading}
+                                        disabled={batchAddTagValues.length === 0}
+                                    >
+                                        批量添加标签 ({selectedCount})
+                                    </Button>
                                     <Button
                                         key="assign-group"
                                         className="emails-page__toolbar-neutral"
@@ -1109,11 +1303,11 @@ const EmailsPage: React.FC = () => {
                                 添加邮箱
                             </Button>
                         </Space>
-                    ) : (
+                    ) : activeTab === 'groups' ? (
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
                             创建分组
                         </Button>
-                    )
+                    ) : undefined
                 }
                 items={[
                     {
@@ -1129,6 +1323,14 @@ const EmailsPage: React.FC = () => {
                                             value={keyword}
                                             onChange={(e) => setKeyword(e.target.value)}
                                             style={{ width: 200 }}
+                                            allowClear
+                                        />
+                                        <Input
+                                            placeholder="按标签搜索（子串）"
+                                            prefix={<SearchOutlined />}
+                                            value={tagKeyword}
+                                            onChange={(e) => setTagKeyword(e.target.value)}
+                                            style={{ width: 220 }}
                                             allowClear
                                         />
                                         <Select
@@ -1201,6 +1403,64 @@ const EmailsPage: React.FC = () => {
                                     rowKey="id"
                                     pagination={false}
                                     scroll={useHorizontalScroll ? { x: 760 } : undefined}
+                                />
+                            </>
+                        ),
+                    },
+                    {
+                        key: 'tags',
+                        label: '邮箱标签',
+                        children: (
+                            <>
+                                <div className="emails-page__tag-toolbar">
+                                    <Space wrap>
+                                        <Input
+                                            placeholder="搜索标签（支持子串）"
+                                            prefix={<SearchOutlined />}
+                                            value={tagManageKeyword}
+                                            onChange={(e) => setTagManageKeyword(e.target.value)}
+                                            style={{ width: 280 }}
+                                            allowClear
+                                        />
+                                        {hasTagSelection ? (
+                                            <Popconfirm
+                                                title={`确定要删除选中的 ${selectedTagCount} 个标签吗？`}
+                                                onConfirm={handleBatchDeleteTags}
+                                            >
+                                                <Button danger loading={batchDeleteTagLoading}>
+                                                    批量删除标签 ({selectedTagCount})
+                                                </Button>
+                                            </Popconfirm>
+                                        ) : (
+                                            <Button danger disabled>
+                                                批量删除标签 (0)
+                                            </Button>
+                                        )}
+                                        <Text type="secondary" className="emails-page__tag-tip">
+                                            先在“邮箱列表”中勾选邮箱，再使用上方工具栏批量添加标签
+                                        </Text>
+                                    </Space>
+                                    <Pagination
+                                        current={tagPage}
+                                        pageSize={tagPageSize}
+                                        total={tagTotal}
+                                        showSizeChanger
+                                        showTotal={(count: number) => `共 ${count} 条`}
+                                        onChange={(currentPage: number, currentPageSize: number) => {
+                                            setTagPage(currentPage);
+                                            setTagPageSize(currentPageSize);
+                                        }}
+                                    />
+                                </div>
+                                <Table
+                                    className="email-tags-table"
+                                    columns={tagColumns}
+                                    dataSource={tagItems}
+                                    rowKey="tag"
+                                    loading={tagListLoading}
+                                    rowSelection={tagRowSelection}
+                                    pagination={false}
+                                    scroll={useHorizontalScroll ? { x: 560 } : undefined}
                                 />
                             </>
                         ),

@@ -2,7 +2,15 @@ import { type FastifyPluginAsync } from 'fastify';
 import { emailService } from './email.service.js';
 import { mailService } from '../mail/mail.service.js';
 import { tokenRefreshService } from './token-refresh.service.js';
-import { createEmailSchema, updateEmailSchema, listEmailSchema, importEmailSchema } from './email.schema.js';
+import {
+    createEmailSchema,
+    updateEmailSchema,
+    listEmailSchema,
+    importEmailSchema,
+    listEmailTagsSchema,
+    batchAddEmailTagsSchema,
+    batchDeleteEmailTagsSchema,
+} from './email.schema.js';
 import { z } from 'zod';
 import { AppError } from '../../plugins/error.js';
 import { getTokenRefreshJobNextRunAt, refreshTokenRefreshJobSchedule } from '../../jobs/token-refresh.js';
@@ -15,6 +23,44 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.get('/', async (request) => {
         const input = listEmailSchema.parse(request.query);
         const result = await emailService.list(input);
+        return { success: true, data: result };
+    });
+
+    // 标签列表（聚合）
+    fastify.get('/tags', async (request) => {
+        const input = listEmailTagsSchema.parse(request.query);
+        const result = await emailService.listTags(input);
+        return { success: true, data: result };
+    });
+
+    // 批量给邮箱添加标签
+    fastify.post('/tags/batch-add', async (request) => {
+        const input = batchAddEmailTagsSchema.parse(request.body);
+        const result = await emailService.batchAddTags(input);
+        request.log.info({
+            systemEvent: true,
+            action: 'email.tags.batch_add',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            emailIds: input.emailIds,
+            tags: input.tags,
+            updatedCount: result.updated,
+        }, '批量添加邮箱标签');
+        return { success: true, data: result };
+    });
+
+    // 批量删除标签（全局）
+    fastify.post('/tags/batch-delete', async (request) => {
+        const input = batchDeleteEmailTagsSchema.parse(request.body);
+        const result = await emailService.batchDeleteTags(input);
+        request.log.info({
+            systemEvent: true,
+            action: 'email.tags.batch_delete',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            tags: input.tags,
+            updatedCount: result.updated,
+        }, '批量删除邮箱标签');
         return { success: true, data: result };
     });
 

@@ -2,7 +2,15 @@ import prisma from '../../lib/prisma.js';
 import { encrypt, decrypt } from '../../lib/crypto.js';
 import { AppError } from '../../plugins/error.js';
 import type { Prisma } from '@prisma/client';
-import type { CreateEmailInput, UpdateEmailInput, ListEmailInput, ImportEmailInput } from './email.schema.js';
+import type {
+    CreateEmailInput,
+    UpdateEmailInput,
+    ListEmailInput,
+    ImportEmailInput,
+    ListEmailTagsInput,
+    BatchAddEmailTagsInput,
+    BatchDeleteEmailTagsInput,
+} from './email.schema.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const AUTO_SEPARATOR_CANDIDATES = ['----', '|', ',', ';', '\t', ':'] as const;
@@ -111,13 +119,34 @@ export const emailService = {
      * 获取邮箱列表
      */
     async list(input: ListEmailInput) {
-        const { page, pageSize, status, keyword, groupId, groupName } = input;
+        const { page, pageSize, status, keyword, tagKeyword, groupId, groupName } = input;
         const skip = (page - 1) * pageSize;
 
         const where: Prisma.EmailAccountWhereInput = {};
         if (status) where.status = status;
         if (keyword) {
             where.email = { contains: keyword };
+        }
+        const normalizedTagKeyword = tagKeyword?.trim();
+        if (normalizedTagKeyword) {
+            const pattern = `%${normalizedTagKeyword}%`;
+            const matchedRows = await prisma.$queryRaw<Array<{ id: number }>>`
+                SELECT DISTINCT ea."id" AS id
+                FROM "email_accounts" ea
+                CROSS JOIN LATERAL unnest(ea."tags") AS t(tag)
+                WHERE btrim(t.tag) <> ''
+                  AND t.tag ILIKE ${pattern}
+            `;
+
+            const matchedIds = matchedRows
+                .map((row) => Number(row.id))
+                .filter((id) => Number.isFinite(id));
+
+            if (!matchedIds.length) {
+                return { list: [], total: 0, page, pageSize };
+            }
+
+            where.id = { in: matchedIds };
         }
         if (groupId) {
             where.groupId = groupId;
@@ -165,6 +194,187 @@ export const emailService = {
         }));
 
         return { list: normalizedList, total, page, pageSize };
+    },
+
+    /**
+     * 标签管理：聚合查询标签列表
+     */
+    async listTags(input: ListEmailTagsInput) {
+        const { page, pageSize, keyword } = input;
+        const skip = (page - 1) * pageSize;
+        const normalizedKeyword = keyword?.trim();
+        const pattern = normalizedKeyword ? `%${normalizedKeyword}%` : undefined;
+
+        let rows: Array<{ tag: string; emailCount: bigint | number }> = [];
+        let totalRows: Array<{ total: bigint | number }> = [];
+
+        if (pattern) {
+            [rows, totalRows] = await Promise.all([
+                prisma.$queryRaw<Array<{ tag: string; emailCount: bigint | number }>>`
+                    SELECT
+                        src.tag,
+                        COUNT(DISTINCT src."emailId")::bigint AS "emailCount"
+                    FROM (
+                        SELECT ea."id" AS "emailId", btrim(t.tag) AS tag
+                        FROM "email_accounts" ea
+                        CROSS JOIN LATERAL unnest(ea."tags") AS t(tag)
+                    ) src
+                    WHERE src.tag <> ''
+                      AND src.tag ILIKE ${pattern}
+                    GROUP BY src.tag
+                    ORDER BY "emailCount" DESC, src.tag ASC
+                    OFFSET ${skip}
+                    LIMIT ${pageSize}
+                `,
+                prisma.$queryRaw<Array<{ total: bigint | number }>>`
+                    SELECT COUNT(*)::bigint AS total
+                    FROM (
+                        SELECT DISTINCT btrim(t.tag) AS tag
+                        FROM "email_accounts" ea
+                        CROSS JOIN LATERAL unnest(ea."tags") AS t(tag)
+                        WHERE btrim(t.tag) <> ''
+                          AND btrim(t.tag) ILIKE ${pattern}
+                    ) distinct_tags
+                `,
+            ]);
+        } else {
+            [rows, totalRows] = await Promise.all([
+                prisma.$queryRaw<Array<{ tag: string; emailCount: bigint | number }>>`
+                    SELECT
+                        src.tag,
+                        COUNT(DISTINCT src."emailId")::bigint AS "emailCount"
+                    FROM (
+                        SELECT ea."id" AS "emailId", btrim(t.tag) AS tag
+                        FROM "email_accounts" ea
+                        CROSS JOIN LATERAL unnest(ea."tags") AS t(tag)
+                    ) src
+                    WHERE src.tag <> ''
+                    GROUP BY src.tag
+                    ORDER BY "emailCount" DESC, src.tag ASC
+                    OFFSET ${skip}
+                    LIMIT ${pageSize}
+                `,
+                prisma.$queryRaw<Array<{ total: bigint | number }>>`
+                    SELECT COUNT(*)::bigint AS total
+                    FROM (
+                        SELECT DISTINCT btrim(t.tag) AS tag
+                        FROM "email_accounts" ea
+                        CROSS JOIN LATERAL unnest(ea."tags") AS t(tag)
+                        WHERE btrim(t.tag) <> ''
+                    ) distinct_tags
+                `,
+            ]);
+        }
+
+        return {
+            list: rows.map((row) => ({
+                tag: row.tag,
+                emailCount: Number(row.emailCount),
+            })),
+            total: Number(totalRows[0]?.total ?? 0),
+            page,
+            pageSize,
+        };
+    },
+
+    /**
+     * 标签管理：批量为指定邮箱添加标签
+     */
+    async batchAddTags(input: BatchAddEmailTagsInput) {
+        const emailIds = Array.from(
+            new Set(
+                input.emailIds
+                    .map((id) => Number(id))
+                    .filter((id) => Number.isInteger(id) && id > 0)
+            )
+        );
+        const tagsToAdd = normalizeTags(input.tags);
+
+        if (!emailIds.length || !tagsToAdd.length) {
+            return { updated: 0 };
+        }
+
+        const accounts = await prisma.emailAccount.findMany({
+            where: { id: { in: emailIds } },
+            select: {
+                id: true,
+                tags: true,
+            },
+        });
+
+        if (!accounts.length) {
+            return { updated: 0 };
+        }
+
+        await prisma.$transaction(
+            accounts.map((account) =>
+                prisma.emailAccount.update({
+                    where: { id: account.id },
+                    data: {
+                        tags: normalizeTags([...(account.tags || []), ...tagsToAdd]),
+                    },
+                })
+            )
+        );
+
+        return { updated: accounts.length };
+    },
+
+    /**
+     * 标签管理：批量删除标签（全局）
+     */
+    async batchDeleteTags(input: BatchDeleteEmailTagsInput) {
+        const tagsToDelete = normalizeTags(input.tags);
+        if (!tagsToDelete.length) {
+            return { updated: 0 };
+        }
+
+        const normalizedDeleteSet = new Set(tagsToDelete.map((tag) => tag.toLowerCase()));
+
+        const accounts = await prisma.emailAccount.findMany({
+            where: {
+                tags: {
+                    isEmpty: false,
+                },
+            },
+            select: {
+                id: true,
+                tags: true,
+            },
+        });
+
+        const updates = accounts
+            .map((account) => {
+                const filteredTags = account.tags.filter((tag) => {
+                    const normalized = tag.trim().toLowerCase();
+                    return normalized && !normalizedDeleteSet.has(normalized);
+                });
+
+                if (filteredTags.length === account.tags.length) {
+                    return null;
+                }
+
+                return {
+                    id: account.id,
+                    tags: normalizeTags(filteredTags),
+                };
+            })
+            .filter((item): item is { id: number; tags: string[] } => item !== null);
+
+        if (!updates.length) {
+            return { updated: 0 };
+        }
+
+        await prisma.$transaction(
+            updates.map((item) =>
+                prisma.emailAccount.update({
+                    where: { id: item.id },
+                    data: { tags: item.tags },
+                })
+            )
+        );
+
+        return { updated: updates.length };
     },
 
     /**

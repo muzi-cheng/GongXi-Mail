@@ -466,8 +466,26 @@ export const apiKeyApi = {
 // ========================================
 
 export const emailApi = {
-    getList: <T = Record<string, unknown>>(params?: { page?: number; pageSize?: number; status?: string; keyword?: string; groupId?: number }) =>
+    getList: <T = Record<string, unknown>>(params?: { page?: number; pageSize?: number; status?: string; keyword?: string; tagKeyword?: string; groupId?: number }) =>
         requestGet<ApiPagedList<T>>('/admin/emails', { params, cacheMs: 800 }),
+
+    getTagList: <T = Record<string, unknown>>(params?: { page?: number; pageSize?: number; keyword?: string }) =>
+        requestGet<ApiPagedList<T>>('/admin/emails/tags', { params, cacheMs: 800 }),
+
+    batchAddTags: (emailIds: number[], tags: string[]) =>
+        requestPost<{ updated: number }, { emailIds: number[]; tags: string[] }>('/admin/emails/tags/batch-add', {
+            emailIds,
+            tags,
+        }, {
+            invalidatePrefixes: ['/admin/emails', '/admin/emails/tags'],
+        }),
+
+    batchDeleteTags: (tags: string[]) =>
+        requestPost<{ updated: number }, { tags: string[] }>('/admin/emails/tags/batch-delete', {
+            tags,
+        }, {
+            invalidatePrefixes: ['/admin/emails', '/admin/emails/tags'],
+        }),
 
     getById: <T = Record<string, unknown>>(id: number, includeSecrets?: boolean) =>
         requestGet<T>(`/admin/emails/${id}`, { params: { secrets: includeSecrets } }),
