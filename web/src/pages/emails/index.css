@@ -70,14 +70,6 @@
   display: inline-flex;
 }
 
-.emails-page__batch-tag-select {
-  min-width: 280px;
-}
-
-.emails-page__batch-tag-select .ant-select-selector {
-  min-height: 32px;
-}
-
 .emails-page__tag-toolbar {
   display: flex;
   justify-content: space-between;
@@ -87,8 +79,12 @@
   flex-wrap: wrap;
 }
 
-.emails-page__tag-tip {
-  white-space: nowrap;
+.emails-page__create-tag-select {
+  width: 100%;
+}
+
+.emails-page__create-tag-select .ant-select-selector {
+  min-height: 38px;
 }
 
 .emails-page .email-tags-table .ant-table-tbody > tr.ant-table-row-selected > td {

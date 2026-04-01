@@ -141,6 +141,27 @@ const normalizeTagValues = (value: unknown): string[] => {
         });
 };
 
+const normalizeLineValues = (value: string): string[] => {
+    const seen = new Set<string>();
+
+    return value
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter((item) => {
+            if (!item) {
+                return false;
+            }
+
+            const normalizedKey = item.toLowerCase();
+            if (seen.has(normalizedKey)) {
+                return false;
+            }
+
+            seen.add(normalizedKey);
+            return true;
+        });
+};
+
 const fallbackCopyText = (value: string): boolean => {
     if (typeof document === 'undefined') {
         return false;
@@ -213,7 +234,7 @@ const EmailsPage: React.FC = () => {
     const [passwordById, setPasswordById] = useState<Record<number, string | null>>({});
     const [passwordLoadingIds, setPasswordLoadingIds] = useState<Set<number>>(new Set());
     const [batchRefreshing, setBatchRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'emails' | 'groups' | 'tags'>('emails');
+    const [activeTab, setActiveTab] = useState<'emails' | 'tags' | 'groups'>('emails');
     const [groupKeyword, setGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
     const [groupPageSize, setGroupPageSize] = useState(10);
@@ -224,10 +245,14 @@ const EmailsPage: React.FC = () => {
     const [tagListLoading, setTagListLoading] = useState(false);
     const [tagManageKeyword, setTagManageKeyword] = useState('');
     const [debouncedTagManageKeyword, setDebouncedTagManageKeyword] = useState('');
+    const [selectedGroupRowKeys, setSelectedGroupRowKeys] = useState<React.Key[]>([]);
     const [selectedTagRowKeys, setSelectedTagRowKeys] = useState<React.Key[]>([]);
-    const [batchAddTagValues, setBatchAddTagValues] = useState<string[]>([]);
-    const [batchAddTagLoading, setBatchAddTagLoading] = useState(false);
+    const [createTagModalVisible, setCreateTagModalVisible] = useState(false);
+    const [createTagValues, setCreateTagValues] = useState<string[]>([]);
+    const [createTagLoading, setCreateTagLoading] = useState(false);
     const [batchDeleteTagLoading, setBatchDeleteTagLoading] = useState(false);
+    const [batchDeleteGroupLoading, setBatchDeleteGroupLoading] = useState(false);
+    const [groupSubmitting, setGroupSubmitting] = useState(false);
     const latestListRequestIdRef = useRef(0);
     const latestTagListRequestIdRef = useRef(0);
 
@@ -690,12 +715,17 @@ const EmailsPage: React.FC = () => {
     const handleCreateGroup = () => {
         setEditingGroupId(null);
         groupForm.resetFields();
-        groupForm.setFieldsValue({ fetchStrategy: 'GRAPH_FIRST' });
+        groupForm.setFieldsValue({
+            namesText: '',
+            description: '',
+            fetchStrategy: 'GRAPH_FIRST',
+        });
         setGroupModalVisible(true);
     };
 
     const handleEditGroup = useCallback((group: EmailGroup) => {
         setEditingGroupId(group.id);
+        groupForm.resetFields();
         groupForm.setFieldsValue({
             name: group.name,
             description: group.description,
@@ -718,25 +748,107 @@ const EmailsPage: React.FC = () => {
     }, [fetchData, fetchGroups]);
 
     const handleGroupSubmit = async () => {
+        setGroupSubmitting(true);
         try {
             const values = await groupForm.validateFields();
             if (editingGroupId) {
-                const res = await groupApi.update(editingGroupId, values);
+                const res = await groupApi.update(editingGroupId, {
+                    name: values.name,
+                    description: values.description,
+                    fetchStrategy: values.fetchStrategy,
+                });
                 if (res.code === 200) {
                     message.success('分组已更新');
                     setGroupModalVisible(false);
+                    setSelectedGroupRowKeys([]);
                     fetchGroups();
+                    fetchData();
                 }
             } else {
-                const res = await groupApi.create(values);
-                if (res.code === 200) {
-                    message.success('分组已创建');
+                const groupNames = normalizeLineValues(values.namesText || '');
+                if (groupNames.length === 0) {
+                    message.warning('请至少输入一个分组名称');
+                    return;
+                }
+
+                const createRequests = groupNames.map((name) =>
+                    groupApi.create({
+                        name,
+                        description: values.description,
+                        fetchStrategy: values.fetchStrategy,
+                    })
+                );
+
+                const results = await Promise.allSettled(createRequests);
+                let successCount = 0;
+                let failedCount = 0;
+
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value.code === 200) {
+                        successCount += 1;
+                    } else {
+                        failedCount += 1;
+                    }
+                }
+
+                if (successCount > 0) {
+                    message.success(`成功创建 ${successCount} 个分组`);
                     setGroupModalVisible(false);
+                    setSelectedGroupRowKeys([]);
                     fetchGroups();
+                    fetchData();
+                }
+
+                if (failedCount > 0) {
+                    message.warning(`${failedCount} 个分组创建失败（可能名称重复）`);
                 }
             }
         } catch (err: unknown) {
             message.error(getErrorMessage(err, '分组保存失败'));
+        } finally {
+            setGroupSubmitting(false);
+        }
+    };
+
+    const handleBatchDeleteGroups = async () => {
+        const groupIds = selectedGroupRowKeys
+            .map((key) => Number(key))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        if (groupIds.length === 0) {
+            message.warning('请先选择分组');
+            return;
+        }
+
+        setBatchDeleteGroupLoading(true);
+        try {
+            const results = await Promise.allSettled(groupIds.map((id) => groupApi.delete(id)));
+
+            let successCount = 0;
+            let failedCount = 0;
+
+            for (const result of results) {
+                if (result.status === 'fulfilled' && result.value.code === 200) {
+                    successCount += 1;
+                } else {
+                    failedCount += 1;
+                }
+            }
+
+            if (successCount > 0) {
+                message.success(`成功删除 ${successCount} 个分组`);
+            }
+            if (failedCount > 0) {
+                message.warning(`${failedCount} 个分组删除失败`);
+            }
+
+            setSelectedGroupRowKeys([]);
+            fetchGroups();
+            fetchData();
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, '批量删除分组失败'));
+        } finally {
+            setBatchDeleteGroupLoading(false);
         }
     };
 
@@ -787,37 +899,37 @@ const EmailsPage: React.FC = () => {
         }
     };
 
-    const handleBatchAddTags = async () => {
+    const handleCreateTags = async () => {
         const emailIds = selectedRowKeys
             .map((key) => Number(key))
             .filter((id) => Number.isInteger(id) && id > 0);
         if (emailIds.length === 0) {
-            message.warning('请先选择邮箱');
+            message.warning('请先在“邮箱列表”中勾选邮箱');
             return;
         }
 
-        const normalizedTags = normalizeTagValues(batchAddTagValues);
+        const normalizedTags = normalizeTagValues(createTagValues);
         if (normalizedTags.length === 0) {
-            message.warning('请先输入要添加的标签');
+            message.warning('请先输入要创建的标签');
             return;
         }
 
-        setBatchAddTagLoading(true);
+        setCreateTagLoading(true);
         try {
             const res = await emailApi.batchAddTags(emailIds, normalizedTags);
             if (res.code === 200) {
                 message.success(`成功为 ${res.data.updated} 个邮箱添加标签`);
-                setBatchAddTagValues([]);
-                setSelectedRowKeys([]);
+                setCreateTagModalVisible(false);
+                setCreateTagValues([]);
                 fetchData();
                 fetchTagData();
             } else {
-                message.error(res.message || '批量添加标签失败');
+                message.error(res.message || '创建标签失败');
             }
         } catch (err: unknown) {
-            message.error(getErrorMessage(err, '批量添加标签失败'));
+            message.error(getErrorMessage(err, '创建标签失败'));
         } finally {
-            setBatchAddTagLoading(false);
+            setCreateTagLoading(false);
         }
     };
 
@@ -1053,6 +1165,14 @@ const EmailsPage: React.FC = () => {
         [selectedTagRowKeys]
     );
 
+    const groupRowSelection = useMemo(
+        () => ({
+            selectedRowKeys: selectedGroupRowKeys,
+            onChange: (keys: React.Key[]) => setSelectedGroupRowKeys(keys),
+        }),
+        [selectedGroupRowKeys]
+    );
+
     const tablePagination = useMemo(
         () => ({
             current: page,
@@ -1097,6 +1217,11 @@ const EmailsPage: React.FC = () => {
             setGroupPage(maxPage);
         }
     }, [filteredGroups.length, groupPage, groupPageSize]);
+
+    useEffect(() => {
+        const validGroupIds = new Set(groups.map((group) => group.id));
+        setSelectedGroupRowKeys((prev) => prev.filter((key) => validGroupIds.has(Number(key))));
+    }, [groups]);
 
     const emailDetailSrcDoc = useMemo(
         () => `
@@ -1222,13 +1347,15 @@ const EmailsPage: React.FC = () => {
     const hasSelection = selectedCount > 0;
     const selectedTagCount = selectedTagRowKeys.length;
     const hasTagSelection = selectedTagCount > 0;
+    const selectedGroupCount = selectedGroupRowKeys.length;
+    const hasGroupSelection = selectedGroupCount > 0;
 
     return (
         <div className="emails-page">
             <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
             <Tabs
                 activeKey={activeTab}
-                onChange={(key) => setActiveTab(key as 'emails' | 'groups' | 'tags')}
+                onChange={(key) => setActiveTab(key as 'emails' | 'tags' | 'groups')}
                 animated={false}
                 destroyInactiveTabPane
                 tabBarExtraContent={
@@ -1250,24 +1377,6 @@ const EmailsPage: React.FC = () => {
                             </Button>
                             <div className={`emails-page__toolbar-batch${hasSelection ? ' is-active' : ''}`}>
                                 <Space wrap size={8}>
-                                    <Select
-                                        mode="tags"
-                                        className="emails-page__batch-tag-select"
-                                        placeholder="输入标签后回车，批量添加到已选邮箱"
-                                        value={batchAddTagValues}
-                                        allowClear
-                                        tokenSeparators={[',', '，', ';', '；']}
-                                        onChange={(values: string[]) => setBatchAddTagValues(normalizeTagValues(values))}
-                                    />
-                                    <Button
-                                        key="batch-add-tags"
-                                        className="emails-page__toolbar-neutral"
-                                        onClick={handleBatchAddTags}
-                                        loading={batchAddTagLoading}
-                                        disabled={batchAddTagValues.length === 0}
-                                    >
-                                        批量添加标签 ({selectedCount})
-                                    </Button>
                                     <Button
                                         key="assign-group"
                                         className="emails-page__toolbar-neutral"
@@ -1303,10 +1412,53 @@ const EmailsPage: React.FC = () => {
                                 添加邮箱
                             </Button>
                         </Space>
+                    ) : activeTab === 'tags' ? (
+                        <Space wrap className="emails-page__toolbar">
+                            {hasTagSelection ? (
+                                <Popconfirm
+                                    title={`确定要删除选中的 ${selectedTagCount} 个标签吗？`}
+                                    onConfirm={handleBatchDeleteTags}
+                                >
+                                    <Button danger loading={batchDeleteTagLoading}>
+                                        批量删除 ({selectedTagCount})
+                                    </Button>
+                                </Popconfirm>
+                            ) : (
+                                <Button danger disabled>
+                                    批量删除 (0)
+                                </Button>
+                            )}
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                    setCreateTagValues([]);
+                                    setCreateTagModalVisible(true);
+                                }}
+                            >
+                                创建标签
+                            </Button>
+                        </Space>
                     ) : activeTab === 'groups' ? (
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
-                            创建分组
-                        </Button>
+                        <Space wrap className="emails-page__toolbar">
+                            {hasGroupSelection ? (
+                                <Popconfirm
+                                    title={`确定要删除选中的 ${selectedGroupCount} 个分组吗？`}
+                                    onConfirm={handleBatchDeleteGroups}
+                                >
+                                    <Button danger loading={batchDeleteGroupLoading}>
+                                        批量删除 ({selectedGroupCount})
+                                    </Button>
+                                </Popconfirm>
+                            ) : (
+                                <Button danger disabled>
+                                    批量删除 (0)
+                                </Button>
+                            )}
+                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
+                                创建分组
+                            </Button>
+                        </Space>
                     ) : undefined
                 }
                 items={[
@@ -1371,6 +1523,45 @@ const EmailsPage: React.FC = () => {
                         ),
                     },
                     {
+                        key: 'tags',
+                        label: '邮箱标签',
+                        children: (
+                            <>
+                                <div className="emails-page__tag-toolbar">
+                                    <Input
+                                        placeholder="搜索标签（支持子串）"
+                                        prefix={<SearchOutlined />}
+                                        value={tagManageKeyword}
+                                        onChange={(e) => setTagManageKeyword(e.target.value)}
+                                        style={{ width: 280 }}
+                                        allowClear
+                                    />
+                                    <Pagination
+                                        current={tagPage}
+                                        pageSize={tagPageSize}
+                                        total={tagTotal}
+                                        showSizeChanger
+                                        showTotal={(count: number) => `共 ${count} 条`}
+                                        onChange={(currentPage: number, currentPageSize: number) => {
+                                            setTagPage(currentPage);
+                                            setTagPageSize(currentPageSize);
+                                        }}
+                                    />
+                                </div>
+                                <Table
+                                    className="email-tags-table"
+                                    columns={tagColumns}
+                                    dataSource={tagItems}
+                                    rowKey="tag"
+                                    loading={tagListLoading}
+                                    rowSelection={tagRowSelection}
+                                    pagination={false}
+                                    scroll={useHorizontalScroll ? { x: 560 } : undefined}
+                                />
+                            </>
+                        ),
+                    },
+                    {
                         key: 'groups',
                         label: '邮箱分组',
                         children: (
@@ -1401,66 +1592,9 @@ const EmailsPage: React.FC = () => {
                                     columns={groupColumns}
                                     dataSource={pagedGroups}
                                     rowKey="id"
+                                    rowSelection={groupRowSelection}
                                     pagination={false}
                                     scroll={useHorizontalScroll ? { x: 760 } : undefined}
-                                />
-                            </>
-                        ),
-                    },
-                    {
-                        key: 'tags',
-                        label: '邮箱标签',
-                        children: (
-                            <>
-                                <div className="emails-page__tag-toolbar">
-                                    <Space wrap>
-                                        <Input
-                                            placeholder="搜索标签（支持子串）"
-                                            prefix={<SearchOutlined />}
-                                            value={tagManageKeyword}
-                                            onChange={(e) => setTagManageKeyword(e.target.value)}
-                                            style={{ width: 280 }}
-                                            allowClear
-                                        />
-                                        {hasTagSelection ? (
-                                            <Popconfirm
-                                                title={`确定要删除选中的 ${selectedTagCount} 个标签吗？`}
-                                                onConfirm={handleBatchDeleteTags}
-                                            >
-                                                <Button danger loading={batchDeleteTagLoading}>
-                                                    批量删除标签 ({selectedTagCount})
-                                                </Button>
-                                            </Popconfirm>
-                                        ) : (
-                                            <Button danger disabled>
-                                                批量删除标签 (0)
-                                            </Button>
-                                        )}
-                                        <Text type="secondary" className="emails-page__tag-tip">
-                                            先在“邮箱列表”中勾选邮箱，再使用上方工具栏批量添加标签
-                                        </Text>
-                                    </Space>
-                                    <Pagination
-                                        current={tagPage}
-                                        pageSize={tagPageSize}
-                                        total={tagTotal}
-                                        showSizeChanger
-                                        showTotal={(count: number) => `共 ${count} 条`}
-                                        onChange={(currentPage: number, currentPageSize: number) => {
-                                            setTagPage(currentPage);
-                                            setTagPageSize(currentPageSize);
-                                        }}
-                                    />
-                                </div>
-                                <Table
-                                    className="email-tags-table"
-                                    columns={tagColumns}
-                                    dataSource={tagItems}
-                                    rowKey="tag"
-                                    loading={tagListLoading}
-                                    rowSelection={tagRowSelection}
-                                    pagination={false}
-                                    scroll={useHorizontalScroll ? { x: 560 } : undefined}
                                 />
                             </>
                         ),
@@ -1723,13 +1857,29 @@ const EmailsPage: React.FC = () => {
                 open={groupModalVisible}
                 onOk={handleGroupSubmit}
                 onCancel={() => setGroupModalVisible(false)}
+                confirmLoading={groupSubmitting}
+                okText={editingGroupId ? '保存' : '创建'}
                 destroyOnClose
                 width={460}
             >
                 <Form form={groupForm} layout="vertical">
-                    <Form.Item name="name" label="分组名称" rules={[{ required: true, message: '请输入分组名称' }]}>
-                        <Input placeholder="例如：aws、discord" />
-                    </Form.Item>
+                    {editingGroupId ? (
+                        <Form.Item name="name" label="分组名称" rules={[{ required: true, message: '请输入分组名称' }]}>
+                            <Input placeholder="例如：aws、discord" />
+                        </Form.Item>
+                    ) : (
+                        <Form.Item
+                            name="namesText"
+                            label="分组名称"
+                            rules={[{ required: true, message: '请至少输入一个分组名称' }]}
+                            extra="支持一次创建多个分组：每行一个名称，自动去重并忽略空行"
+                        >
+                            <TextArea
+                                rows={6}
+                                placeholder={'例如：\naws\ndiscord\ntelegram'}
+                            />
+                        </Form.Item>
+                    )}
                     <Form.Item name="description" label="描述">
                         <Input placeholder="可选描述" />
                     </Form.Item>
@@ -1741,6 +1891,36 @@ const EmailsPage: React.FC = () => {
                         <Select options={MAIL_FETCH_STRATEGY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))} />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* 创建标签 Modal */}
+            <Modal
+                title="创建标签"
+                open={createTagModalVisible}
+                onOk={handleCreateTags}
+                onCancel={() => {
+                    setCreateTagModalVisible(false);
+                    setCreateTagValues([]);
+                }}
+                confirmLoading={createTagLoading}
+                okText="创建"
+                destroyOnClose
+                width={520}
+            >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Text type={selectedCount > 0 ? 'secondary' : 'danger'}>
+                        将为已勾选的 {selectedCount} 个邮箱添加标签（支持一次输入多个标签）
+                    </Text>
+                    <Select
+                        mode="tags"
+                        className="emails-page__create-tag-select"
+                        placeholder="输入标签后回车，可添加多个"
+                        value={createTagValues}
+                        allowClear
+                        tokenSeparators={[',', '，', ';', '；']}
+                        onChange={(values: string[]) => setCreateTagValues(normalizeTagValues(values))}
+                    />
+                </Space>
             </Modal>
 
             {/* 批量分配分组 Modal */}
