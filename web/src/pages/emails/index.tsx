@@ -102,9 +102,34 @@ interface EmailDetailsResult extends EmailAccount {
     refreshToken: string;
 }
 
+const EMAIL_COLUMN_WIDTH = 240;
 const PASSWORD_MASK = '****************';
-const MIN_EMAIL_TABLE_SCROLL_Y = 320;
-const EMAIL_TABLE_BOTTOM_GAP = 32;
+const EMAIL_TABLE_STICKY_OFFSET = 56;
+
+const fallbackCopyText = (value: string): boolean => {
+    if (typeof document === 'undefined') {
+        return false;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', 'true');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        return document.execCommand('copy');
+    } catch {
+        return false;
+    } finally {
+        document.body.removeChild(textArea);
+    }
+};
 
 const EmailsPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
@@ -155,9 +180,7 @@ const EmailsPage: React.FC = () => {
     const [groupKeyword, setGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
     const [groupPageSize, setGroupPageSize] = useState(10);
-    const [tableScrollY, setTableScrollY] = useState<number>(MIN_EMAIL_TABLE_SCROLL_Y);
     const latestListRequestIdRef = useRef(0);
-    const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const toOptionalNumber = (value: unknown): number | undefined => {
         if (value === undefined || value === null || value === '') {
@@ -218,35 +241,6 @@ const EmailsPage: React.FC = () => {
         }, 0);
         return () => window.clearTimeout(timer);
     }, [fetchData]);
-
-    const updateTableScrollY = useCallback(() => {
-        const container = tableWrapperRef.current;
-        if (!container) {
-            return;
-        }
-
-        const rect = container.getBoundingClientRect();
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-        const availableHeight = Math.floor(viewportHeight - rect.top - EMAIL_TABLE_BOTTOM_GAP);
-        setTableScrollY(Math.max(MIN_EMAIL_TABLE_SCROLL_Y, availableHeight));
-    }, []);
-
-    useEffect(() => {
-        if (activeTab !== 'emails') {
-            return;
-        }
-
-        const timer = window.setTimeout(() => {
-            updateTableScrollY();
-        }, 0);
-
-        window.addEventListener('resize', updateTableScrollY);
-
-        return () => {
-            window.clearTimeout(timer);
-            window.removeEventListener('resize', updateTableScrollY);
-        };
-    }, [activeTab, updateTableScrollY, selectedRowKeys.length, pageSize, data.length]);
 
     const handleCreate = () => {
         setEditingId(null);
@@ -543,6 +537,25 @@ const EmailsPage: React.FC = () => {
         }
     }, [passwordById, visiblePasswordIds]);
 
+    const handleCopyEmail = useCallback(async (email: string) => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(email);
+            } else if (!fallbackCopyText(email)) {
+                throw new Error('Clipboard API unavailable');
+            }
+
+            message.success('邮箱已复制');
+        } catch {
+            if (fallbackCopyText(email)) {
+                message.success('邮箱已复制');
+                return;
+            }
+
+            message.error('复制失败，请手动复制');
+        }
+    }, []);
+
     const handleViewEmailDetail = (record: MailItem) => {
         setEmailDetailSubject(record.subject || '无主题');
         setEmailDetailContent(record.html || record.text || '无内容');
@@ -660,7 +673,29 @@ const EmailsPage: React.FC = () => {
             title: '邮箱',
             dataIndex: 'email',
             key: 'email',
-            ellipsis: true,
+            width: EMAIL_COLUMN_WIDTH,
+            className: 'emails-table__email-column',
+            render: (email: string) => (
+                <Tooltip
+                    title={(
+                        <>
+                            <div>点击复制邮箱</div>
+                            <div>{email}</div>
+                        </>
+                    )}
+                >
+                    <button
+                        type="button"
+                        className="emails-table__email-button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void handleCopyEmail(email);
+                        }}
+                    >
+                        <span className="emails-table__email-text">{email}</span>
+                    </button>
+                </Tooltip>
+            ),
         },
         {
             title: '密码',
@@ -683,8 +718,9 @@ const EmailsPage: React.FC = () => {
                             style={{
                                 marginBottom: 0,
                                 display: 'inline-block',
-                                minWidth: 160,
-                                maxWidth: 260,
+                                width: '100%',
+                                minWidth: 0,
+                                maxWidth: 220,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
@@ -811,7 +847,7 @@ const EmailsPage: React.FC = () => {
                 </Space>
             ),
         },
-    ], [handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, passwordById, passwordLoadingIds, refreshingTokenIds, visiblePasswordIds]);
+    ], [handleCopyEmail, handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, passwordById, passwordLoadingIds, refreshingTokenIds, visiblePasswordIds]);
 
     const rowSelection = useMemo(
         () => ({
@@ -836,10 +872,7 @@ const EmailsPage: React.FC = () => {
         [page, pageSize, total]
     );
 
-    const emailTableScroll = useMemo(
-        () => (useHorizontalScroll ? { x: 960 } : undefined),
-        [useHorizontalScroll]
-    );
+    const emailTableScroll = useMemo(() => ({ x: 'max-content' }), []);
 
     const filteredGroups = useMemo(() => {
         const kw = groupKeyword.trim().toLowerCase();
@@ -1062,22 +1095,18 @@ const EmailsPage: React.FC = () => {
                                     />
                                 </div>
 
-                                <div
-                                    ref={tableWrapperRef}
-                                    className={`emails-table-scroll-wrapper${useHorizontalScroll ? ' emails-table-scroll-wrapper--horizontal' : ''}`}
-                                    style={{ maxHeight: tableScrollY }}
-                                >
-                                    <Table
-                                        className="emails-table"
-                                        columns={columns}
-                                        dataSource={data}
-                                        rowKey="id"
-                                        loading={loading}
-                                        rowSelection={rowSelection}
-                                        pagination={false}
-                                        scroll={emailTableScroll}
-                                    />
-                                </div>
+                                <Table
+                                    className="emails-table"
+                                    columns={columns}
+                                    dataSource={data}
+                                    rowKey="id"
+                                    loading={loading}
+                                    rowSelection={rowSelection}
+                                    pagination={false}
+                                    scroll={emailTableScroll}
+                                    tableLayout="fixed"
+                                    sticky={{ offsetHeader: EMAIL_TABLE_STICKY_OFFSET }}
+                                />
                             </>
                         ),
                     },

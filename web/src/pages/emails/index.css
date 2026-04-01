@@ -1,22 +1,55 @@
 .emails-page .emails-table .ant-table-tbody > tr.ant-table-row-selected > td {
   background: #f1f5f9 !important;
+  transition: none !important; /* 消除选中时的背景闪烁 */
 }
 
 .emails-page .emails-table .ant-table-tbody > tr.ant-table-row-selected:hover > td {
   background: #e2e8f0 !important;
+  transition: none !important;
 }
 
 .emails-page .emails-table .ant-table-tbody > tr > td {
   transition: background-color 0.2s ease;
 }
 
-.emails-page .emails-table-scroll-wrapper {
-  width: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+/* 确保选中行选择框列也不闪烁 */
+.emails-page .emails-table .ant-table-tbody > tr.ant-table-row-selected .ant-table-selection-column {
+  background: #f1f5f9 !important;
+  transition: none !important;
 }
 
-.emails-page .emails-table-scroll-wrapper--horizontal {
-  overflow-x: auto;
+.emails-page .emails-table .emails-table__email-column {
+  width: 240px;
+  max-width: 240px;
+}
+
+.emails-page .emails-table .emails-table__email-button {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1677ff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.emails-page .emails-table .emails-table__email-button:hover {
+  color: #4096ff;
+}
+
+.emails-page .emails-table .emails-table__email-button:focus-visible {
+  outline: 2px solid rgba(22, 119, 255, 0.3);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.emails-page .emails-table .emails-table__email-text {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
