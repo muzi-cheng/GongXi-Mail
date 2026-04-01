@@ -472,6 +472,21 @@ export const emailApi = {
     getTagList: <T = Record<string, unknown>>(params?: { page?: number; pageSize?: number; keyword?: string }) =>
         requestGet<ApiPagedList<T>>('/admin/emails/tags', { params, cacheMs: 800 }),
 
+    createTag: (data: { name: string; description?: string }) =>
+        requestPost<Record<string, unknown>, { name: string; description?: string }>('/admin/emails/tags', data, {
+            invalidatePrefixes: ['/admin/emails/tags', '/admin/emails'],
+        }),
+
+    updateTag: (id: number, data: { name?: string; description?: string | null }) =>
+        requestPut<Record<string, unknown>, { name?: string; description?: string | null }>(`/admin/emails/tags/${id}`, data, {
+            invalidatePrefixes: ['/admin/emails/tags', '/admin/emails'],
+        }),
+
+    deleteTag: (id: number) =>
+        requestDelete<{ success: boolean; updated: number }>(`/admin/emails/tags/${id}`, {
+            invalidatePrefixes: ['/admin/emails/tags', '/admin/emails'],
+        }),
+
     batchAddTags: (emailIds: number[], tags: string[]) =>
         requestPost<{ updated: number }, { emailIds: number[]; tags: string[] }>('/admin/emails/tags/batch-add', {
             emailIds,
@@ -480,9 +495,9 @@ export const emailApi = {
             invalidatePrefixes: ['/admin/emails', '/admin/emails/tags'],
         }),
 
-    batchDeleteTags: (tags: string[]) =>
-        requestPost<{ updated: number }, { tags: string[] }>('/admin/emails/tags/batch-delete', {
-            tags,
+    batchDeleteTags: (ids: number[]) =>
+        requestPost<{ deleted: number; updated: number }, { ids: number[] }>('/admin/emails/tags/batch-delete', {
+            ids,
         }, {
             invalidatePrefixes: ['/admin/emails', '/admin/emails/tags'],
         }),

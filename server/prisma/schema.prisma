@@ -74,6 +74,19 @@ model EmailGroup {
 }
 
 // ============================================
+// 邮箱标签元数据
+// ============================================
+model EmailTag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("email_tags")
+}
+
+// ============================================
 // 邮箱账户
 // ============================================
 model EmailAccount {

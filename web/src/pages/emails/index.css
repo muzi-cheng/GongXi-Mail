@@ -91,6 +91,46 @@
   background: #f1f5f9 !important;
 }
 
+.emails-page .email-tags-table .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+  background: #e2e8f0 !important;
+  transition: none !important;
+}
+
+.emails-page .email-tags-table .ant-table-tbody > tr.ant-table-row-selected .ant-table-selection-column {
+  background: #f1f5f9 !important;
+  transition: none !important;
+}
+
+.emails-page .email-groups-table .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #f1f5f9 !important;
+  transition: none !important;
+}
+
+.emails-page .email-groups-table .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+  background: #e2e8f0 !important;
+  transition: none !important;
+}
+
+.emails-page .email-groups-table .ant-table-tbody > tr.ant-table-row-selected .ant-table-selection-column {
+  background: #f1f5f9 !important;
+  transition: none !important;
+}
+
+.emails-page .email-tags-table .email-tags-table__name-column,
+.emails-page .email-groups-table .email-groups-table__name-column {
+  width: 120px;
+  max-width: 120px;
+}
+
+.emails-page .email-tags-table .email-tags-table__name-tag,
+.emails-page .email-groups-table .email-groups-table__name-tag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .emails-page__toolbar .ant-btn,
 .emails-page__toolbar .ant-btn::before,
 .emails-page__toolbar .ant-btn::after {

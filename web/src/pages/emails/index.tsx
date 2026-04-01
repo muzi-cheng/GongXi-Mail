@@ -91,7 +91,10 @@ interface EmailListResult {
 }
 
 interface EmailTagItem {
-    tag: string;
+    id: number;
+    name: string;
+    description: string | null;
+    createdAt: string;
     emailCount: number;
 }
 
@@ -247,9 +250,10 @@ const EmailsPage: React.FC = () => {
     const [debouncedTagManageKeyword, setDebouncedTagManageKeyword] = useState('');
     const [selectedGroupRowKeys, setSelectedGroupRowKeys] = useState<React.Key[]>([]);
     const [selectedTagRowKeys, setSelectedTagRowKeys] = useState<React.Key[]>([]);
-    const [createTagModalVisible, setCreateTagModalVisible] = useState(false);
-    const [createTagValues, setCreateTagValues] = useState<string[]>([]);
-    const [createTagLoading, setCreateTagLoading] = useState(false);
+    const [tagModalVisible, setTagModalVisible] = useState(false);
+    const [editingTagId, setEditingTagId] = useState<number | null>(null);
+    const [tagSubmitting, setTagSubmitting] = useState(false);
+    const [tagForm] = Form.useForm();
     const [batchDeleteTagLoading, setBatchDeleteTagLoading] = useState(false);
     const [batchDeleteGroupLoading, setBatchDeleteGroupLoading] = useState(false);
     const [groupSubmitting, setGroupSubmitting] = useState(false);
@@ -899,52 +903,115 @@ const EmailsPage: React.FC = () => {
         }
     };
 
-    const handleCreateTags = async () => {
-        const emailIds = selectedRowKeys
-            .map((key) => Number(key))
-            .filter((id) => Number.isInteger(id) && id > 0);
-        if (emailIds.length === 0) {
-            message.warning('请先在“邮箱列表”中勾选邮箱');
-            return;
-        }
+    const handleCreateTag = () => {
+        setEditingTagId(null);
+        tagForm.resetFields();
+        tagForm.setFieldsValue({
+            namesText: '',
+            description: '',
+        });
+        setTagModalVisible(true);
+    };
 
-        const normalizedTags = normalizeTagValues(createTagValues);
-        if (normalizedTags.length === 0) {
-            message.warning('请先输入要创建的标签');
-            return;
-        }
+    const handleEditTag = useCallback((tag: EmailTagItem) => {
+        setEditingTagId(tag.id);
+        tagForm.resetFields();
+        tagForm.setFieldsValue({
+            name: tag.name,
+            description: tag.description || '',
+        });
+        setTagModalVisible(true);
+    }, [tagForm]);
 
-        setCreateTagLoading(true);
+    const handleDeleteTag = useCallback(async (id: number) => {
         try {
-            const res = await emailApi.batchAddTags(emailIds, normalizedTags);
+            const res = await emailApi.deleteTag(id);
             if (res.code === 200) {
-                message.success(`成功为 ${res.data.updated} 个邮箱添加标签`);
-                setCreateTagModalVisible(false);
-                setCreateTagValues([]);
+                message.success(`标签已删除，影响 ${res.data?.updated || 0} 个邮箱`);
+                setSelectedTagRowKeys((prev) => prev.filter((key) => Number(key) !== id));
                 fetchData();
                 fetchTagData();
-            } else {
-                message.error(res.message || '创建标签失败');
             }
         } catch (err: unknown) {
-            message.error(getErrorMessage(err, '创建标签失败'));
+            message.error(getErrorMessage(err, '删除标签失败'));
+        }
+    }, [fetchData, fetchTagData]);
+
+    const handleTagSubmit = async () => {
+        setTagSubmitting(true);
+        try {
+            const values = await tagForm.validateFields();
+
+            if (editingTagId) {
+                const res = await emailApi.updateTag(editingTagId, {
+                    name: values.name,
+                    description: values.description,
+                });
+                if (res.code === 200) {
+                    message.success('标签已更新');
+                    setTagModalVisible(false);
+                    fetchData();
+                    fetchTagData();
+                }
+                return;
+            }
+
+            const tagNames = normalizeLineValues(values.namesText || '');
+            if (tagNames.length === 0) {
+                message.warning('请至少输入一个标签名称');
+                return;
+            }
+
+            const createRequests = tagNames.map((name) =>
+                emailApi.createTag({
+                    name,
+                    description: values.description,
+                })
+            );
+
+            const results = await Promise.allSettled(createRequests);
+            let successCount = 0;
+            let failedCount = 0;
+
+            for (const result of results) {
+                if (result.status === 'fulfilled' && result.value.code === 200) {
+                    successCount += 1;
+                } else {
+                    failedCount += 1;
+                }
+            }
+
+            if (successCount > 0) {
+                message.success(`成功创建 ${successCount} 个标签`);
+                setTagModalVisible(false);
+                fetchData();
+                fetchTagData();
+            }
+
+            if (failedCount > 0) {
+                message.warning(`${failedCount} 个标签创建失败（可能名称重复）`);
+            }
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, '标签保存失败'));
         } finally {
-            setCreateTagLoading(false);
+            setTagSubmitting(false);
         }
     };
 
     const handleBatchDeleteTags = async () => {
-        const tags = normalizeTagValues(selectedTagRowKeys.map((key) => String(key)));
-        if (tags.length === 0) {
+        const ids = selectedTagRowKeys
+            .map((key) => Number(key))
+            .filter((id) => Number.isInteger(id) && id > 0);
+        if (ids.length === 0) {
             message.warning('请先选择标签');
             return;
         }
 
         setBatchDeleteTagLoading(true);
         try {
-            const res = await emailApi.batchDeleteTags(tags);
+            const res = await emailApi.batchDeleteTags(ids);
             if (res.code === 200) {
-                message.success(`成功删除 ${tags.length} 个标签，影响 ${res.data.updated} 个邮箱`);
+                message.success(`成功删除 ${res.data.deleted} 个标签，影响 ${res.data.updated} 个邮箱`);
                 setSelectedTagRowKeys([]);
                 fetchData();
                 fetchTagData();
@@ -1223,6 +1290,11 @@ const EmailsPage: React.FC = () => {
         setSelectedGroupRowKeys((prev) => prev.filter((key) => validGroupIds.has(Number(key))));
     }, [groups]);
 
+    useEffect(() => {
+        const validTagIds = new Set(tagItems.map((tag) => tag.id));
+        setSelectedTagRowKeys((prev) => prev.filter((key) => validTagIds.has(Number(key))));
+    }, [tagItems]);
+
     const emailDetailSrcDoc = useMemo(
         () => `
                         <!DOCTYPE html>
@@ -1275,7 +1347,9 @@ const EmailsPage: React.FC = () => {
             title: '分组名称',
             dataIndex: 'name',
             key: 'name',
-            render: (name: string) => <Tag color="blue">{name}</Tag>,
+            width: 120,
+            className: 'email-groups-table__name-column',
+            render: (name: string) => <Tag color="blue" className="email-groups-table__name-tag">{name}</Tag>,
         },
         {
             title: '描述',
@@ -1327,18 +1401,53 @@ const EmailsPage: React.FC = () => {
 
     const tagColumns: ColumnsType<EmailTagItem> = useMemo(() => [
         {
-            title: '标签',
-            dataIndex: 'tag',
-            key: 'tag',
-            render: (tag: string) => <Tag color="geekblue">{tag}</Tag>,
+            title: '标签名称',
+            dataIndex: 'name',
+            key: 'name',
+            width: 120,
+            className: 'email-tags-table__name-column',
+            render: (name: string) => <Tag color="geekblue" className="email-tags-table__name-tag">{name}</Tag>,
         },
         {
-            title: '关联邮箱数',
+            title: '描述',
+            dataIndex: 'description',
+            key: 'description',
+            render: (description: string | null) => description || '-',
+        },
+        {
+            title: '邮箱数',
             dataIndex: 'emailCount',
             key: 'emailCount',
-            width: 140,
+            width: 100,
         },
-    ], []);
+        {
+            title: '创建时间',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            width: 180,
+            render: (val: string) => dayjs(val).format('YYYY-MM-DD HH:mm'),
+        },
+        {
+            title: '操作',
+            key: 'action',
+            width: 140,
+            render: (_: unknown, record: EmailTagItem) => (
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEditTag(record)}
+                    />
+                    <Popconfirm
+                        title="删除标签后会从所有邮箱中移除，确认？"
+                        onConfirm={() => handleDeleteTag(record.id)}
+                    >
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                </Space>
+            ),
+        },
+    ], [handleDeleteTag, handleEditTag]);
 
     // ========================================
     // Render
@@ -1431,10 +1540,7 @@ const EmailsPage: React.FC = () => {
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                onClick={() => {
-                                    setCreateTagValues([]);
-                                    setCreateTagModalVisible(true);
-                                }}
+                                onClick={handleCreateTag}
                             >
                                 创建标签
                             </Button>
@@ -1552,11 +1658,11 @@ const EmailsPage: React.FC = () => {
                                     className="email-tags-table"
                                     columns={tagColumns}
                                     dataSource={tagItems}
-                                    rowKey="tag"
+                                    rowKey="id"
                                     loading={tagListLoading}
                                     rowSelection={tagRowSelection}
                                     pagination={false}
-                                    scroll={useHorizontalScroll ? { x: 560 } : undefined}
+                                    scroll={useHorizontalScroll ? { x: 760 } : undefined}
                                 />
                             </>
                         ),
@@ -1893,34 +1999,39 @@ const EmailsPage: React.FC = () => {
                 </Form>
             </Modal>
 
-            {/* 创建标签 Modal */}
+            {/* 创建/编辑标签 Modal */}
             <Modal
-                title="创建标签"
-                open={createTagModalVisible}
-                onOk={handleCreateTags}
-                onCancel={() => {
-                    setCreateTagModalVisible(false);
-                    setCreateTagValues([]);
-                }}
-                confirmLoading={createTagLoading}
-                okText="创建"
+                title={editingTagId ? '编辑标签' : '创建标签'}
+                open={tagModalVisible}
+                onOk={handleTagSubmit}
+                onCancel={() => setTagModalVisible(false)}
+                confirmLoading={tagSubmitting}
+                okText={editingTagId ? '保存' : '创建'}
                 destroyOnClose
-                width={520}
+                width={460}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Text type={selectedCount > 0 ? 'secondary' : 'danger'}>
-                        将为已勾选的 {selectedCount} 个邮箱添加标签（支持一次输入多个标签）
-                    </Text>
-                    <Select
-                        mode="tags"
-                        className="emails-page__create-tag-select"
-                        placeholder="输入标签后回车，可添加多个"
-                        value={createTagValues}
-                        allowClear
-                        tokenSeparators={[',', '，', ';', '；']}
-                        onChange={(values: string[]) => setCreateTagValues(normalizeTagValues(values))}
-                    />
-                </Space>
+                <Form form={tagForm} layout="vertical">
+                    {editingTagId ? (
+                        <Form.Item name="name" label="标签名称" rules={[{ required: true, message: '请输入标签名称' }]}>
+                            <Input placeholder="例如：aws、discord" />
+                        </Form.Item>
+                    ) : (
+                        <Form.Item
+                            name="namesText"
+                            label="标签名称"
+                            rules={[{ required: true, message: '请至少输入一个标签名称' }]}
+                            extra="支持一次创建多个标签：每行一个名称，自动去重并忽略空行"
+                        >
+                            <TextArea
+                                rows={6}
+                                placeholder={'例如：\naws\ndiscord\ntelegram'}
+                            />
+                        </Form.Item>
+                    )}
+                    <Form.Item name="description" label="描述">
+                        <Input placeholder="可选描述" />
+                    </Form.Item>
+                </Form>
             </Modal>
 
             {/* 批量分配分组 Modal */}

@@ -8,6 +8,8 @@ import {
     listEmailSchema,
     importEmailSchema,
     listEmailTagsSchema,
+    createEmailTagSchema,
+    updateEmailTagSchema,
     batchAddEmailTagsSchema,
     batchDeleteEmailTagsSchema,
 } from './email.schema.js';
@@ -26,10 +28,57 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
         return { success: true, data: result };
     });
 
-    // 标签列表（聚合）
+    // 标签列表
     fastify.get('/tags', async (request) => {
         const input = listEmailTagsSchema.parse(request.query);
         const result = await emailService.listTags(input);
+        return { success: true, data: result };
+    });
+
+    // 创建标签
+    fastify.post('/tags', async (request) => {
+        const input = createEmailTagSchema.parse(request.body);
+        const result = await emailService.createTag(input);
+        request.log.info({
+            systemEvent: true,
+            action: 'email.tags.create',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            tagId: result.id,
+            tagName: result.name,
+        }, '创建邮箱标签');
+        return { success: true, data: result };
+    });
+
+    // 更新标签
+    fastify.put('/tags/:id', async (request) => {
+        const { id } = request.params as { id: string };
+        const input = updateEmailTagSchema.parse(request.body);
+        const result = await emailService.updateTag(parseInt(id, 10), input);
+        request.log.info({
+            systemEvent: true,
+            action: 'email.tags.update',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            tagId: result.id,
+            tagName: result.name,
+        }, '更新邮箱标签');
+        return { success: true, data: result };
+    });
+
+    // 删除标签
+    fastify.delete('/tags/:id', async (request) => {
+        const { id } = request.params as { id: string };
+        const tagId = parseInt(id, 10);
+        const result = await emailService.deleteTag(tagId);
+        request.log.info({
+            systemEvent: true,
+            action: 'email.tags.delete',
+            actorId: request.user?.id ?? null,
+            actorUsername: request.user?.username ?? null,
+            tagId,
+            updatedCount: result.updated,
+        }, '删除邮箱标签');
         return { success: true, data: result };
     });
 
@@ -58,7 +107,8 @@ const emailRoutes: FastifyPluginAsync = async (fastify) => {
             action: 'email.tags.batch_delete',
             actorId: request.user?.id ?? null,
             actorUsername: request.user?.username ?? null,
-            tags: input.tags,
+            ids: input.ids,
+            deletedCount: result.deleted,
             updatedCount: result.updated,
         }, '批量删除邮箱标签');
         return { success: true, data: result };

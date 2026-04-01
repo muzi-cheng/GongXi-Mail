@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 const emailTagsSchema = z.array(z.string().trim().min(1).max(50)).max(50);
 const requiredEmailTagsSchema = emailTagsSchema.min(1);
+const emailTagNameSchema = z.string().trim().min(1).max(50);
+const emailTagDescriptionSchema = z.string().trim().max(255);
 
 export const createEmailSchema = z.object({
     email: z.string().email(),
@@ -38,13 +40,23 @@ export const listEmailTagsSchema = z.object({
     keyword: z.string().optional(),
 });
 
+export const createEmailTagSchema = z.object({
+    name: emailTagNameSchema,
+    description: emailTagDescriptionSchema.optional(),
+});
+
+export const updateEmailTagSchema = z.object({
+    name: emailTagNameSchema.optional(),
+    description: z.union([emailTagDescriptionSchema, z.literal(''), z.null()]).optional(),
+});
+
 export const batchAddEmailTagsSchema = z.object({
     emailIds: z.array(z.coerce.number().int().positive()).min(1),
     tags: requiredEmailTagsSchema,
 });
 
 export const batchDeleteEmailTagsSchema = z.object({
-    tags: requiredEmailTagsSchema,
+    ids: z.array(z.coerce.number().int().positive()).min(1),
 });
 
 export const importEmailSchema = z.object({
@@ -57,6 +69,8 @@ export type CreateEmailInput = z.infer<typeof createEmailSchema>;
 export type UpdateEmailInput = z.infer<typeof updateEmailSchema>;
 export type ListEmailInput = z.infer<typeof listEmailSchema>;
 export type ListEmailTagsInput = z.infer<typeof listEmailTagsSchema>;
+export type CreateEmailTagInput = z.infer<typeof createEmailTagSchema>;
+export type UpdateEmailTagInput = z.infer<typeof updateEmailTagSchema>;
 export type BatchAddEmailTagsInput = z.infer<typeof batchAddEmailTagsSchema>;
 export type BatchDeleteEmailTagsInput = z.infer<typeof batchDeleteEmailTagsSchema>;
 export type ImportEmailInput = z.infer<typeof importEmailSchema>;
