@@ -120,7 +120,7 @@ interface EmailDetailsResult extends EmailAccount {
 
 const EMAIL_COLUMN_WIDTH = 240;
 const PASSWORD_MASK = '****************';
-const EMAIL_TABLE_STICKY_OFFSET = 56;
+const DEFAULT_EMAIL_TABLE_STICKY_OFFSET = 88;
 
 const renderMutedPlaceholder = (value: string = '-') => <Text type="secondary">{value}</Text>;
 
@@ -198,6 +198,7 @@ const EmailsPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
     const useHorizontalScroll = !screens.xl;
+    const [emailTableStickyOffset, setEmailTableStickyOffset] = useState(DEFAULT_EMAIL_TABLE_STICKY_OFFSET);
 
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<EmailAccount[]>([]);
@@ -373,6 +374,36 @@ const EmailsPage: React.FC = () => {
         }, 0);
         return () => window.clearTimeout(timer);
     }, [fetchGroups]);
+
+    useEffect(() => {
+        if (isMobile) {
+            setEmailTableStickyOffset(DEFAULT_EMAIL_TABLE_STICKY_OFFSET);
+            return;
+        }
+
+        const updateEmailTableStickyOffset = () => {
+            const header = document.querySelector<HTMLElement>('.app-header');
+
+            if (!header) {
+                setEmailTableStickyOffset(DEFAULT_EMAIL_TABLE_STICKY_OFFSET);
+                return;
+            }
+
+            const nextOffset = Math.max(
+                DEFAULT_EMAIL_TABLE_STICKY_OFFSET,
+                Math.ceil(header.getBoundingClientRect().bottom + 8)
+            );
+
+            setEmailTableStickyOffset(nextOffset);
+        };
+
+        updateEmailTableStickyOffset();
+        window.addEventListener('resize', updateEmailTableStickyOffset);
+
+        return () => {
+            window.removeEventListener('resize', updateEmailTableStickyOffset);
+        };
+    }, [isMobile]);
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -1656,7 +1687,7 @@ const EmailsPage: React.FC = () => {
                                         pagination={false}
                                         scroll={emailTableScroll}
                                         tableLayout={isMobile ? 'auto' : 'fixed'}
-                                        sticky={isMobile ? false : { offsetHeader: EMAIL_TABLE_STICKY_OFFSET }}
+                                        sticky={isMobile ? false : { offsetHeader: emailTableStickyOffset }}
                                     />
                                 </Card>
                             </div>

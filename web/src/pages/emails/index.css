@@ -111,7 +111,7 @@
 }
 
 .emails-page__tabs .ant-tabs-nav {
-  margin: 0;
+  margin: 0 0 16px;
 }
 
 .emails-page__tabs .ant-tabs-content-holder,
@@ -410,6 +410,10 @@
 }
 
 @media (max-width: 767px) {
+  .emails-page__tabs .ant-tabs-nav {
+    margin-bottom: 12px;
+  }
+
   .emails-page__toolbar,
   .emails-page__filters {
     gap: 10px;
