@@ -513,6 +513,67 @@
   color: #64748b;
 }
 
+@media (max-width: 991px) {
+  .emails-page__toolbar,
+  .emails-page__filters {
+    width: 100%;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .emails-page__toolbar .page-toolbar__group,
+  .emails-page__filters .page-filter-row__group {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .emails-page__toolbar .page-toolbar__group:first-child,
+  .emails-page__toolbar .page-toolbar__group:last-child,
+  .emails-page__filters .page-filter-row__group:first-child,
+  .emails-page__pagination-group {
+    flex: 1 1 100%;
+  }
+
+  .emails-page__toolbar .page-toolbar__group:last-child {
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .emails-page__toolbar .page-toolbar__group > *,
+  .emails-page__filters .page-filter-row__group > * {
+    flex: 1 1 100%;
+  }
+
+  .emails-page__toolbar .page-toolbar__group > .ant-btn,
+  .emails-page__toolbar .page-toolbar__group > .ant-popconfirm-open-change {
+    width: 100%;
+  }
+
+  .emails-page__filters .page-filter-row__group {
+    flex-wrap: wrap;
+  }
+
+  .emails-page__filter-control,
+  .emails-page__filter-control--lg,
+  .emails-page__filter-control--md,
+  .emails-page__filter-control--sm {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .emails-page__pagination-group {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .emails-page__pagination-group .ant-pagination {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 767px) {
   .emails-page__tabs .ant-tabs-nav {
     margin-bottom: 12px;
