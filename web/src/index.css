@@ -383,17 +383,29 @@ svg {
   top: 0;
   z-index: 20;
   margin: 12px 12px 0;
-  padding: 0 16px;
+  padding: 10px 16px !important;
   min-height: 64px;
+  height: auto !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: nowrap;
+  line-height: normal !important;
   background: #ffffff !important;
   border: 1px solid var(--gx-border);
   border-radius: 18px;
   box-shadow: var(--gx-shadow-sm);
+}
+
+header.ant-layout-header.app-header {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 64px !important;
+  height: auto !important;
+  line-height: normal !important;
+  padding: 10px 16px !important;
+  box-sizing: border-box;
 }
 
 .app-header__left,
@@ -402,6 +414,12 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
+  line-height: normal;
+}
+
+.app-header__left,
+.app-header__right {
+  min-height: 44px;
 }
 
 .app-header__left {
@@ -415,6 +433,13 @@ svg {
   flex: 0 1 auto;
   justify-content: flex-end;
   max-width: min(100%, 320px);
+  overflow: hidden;
+}
+
+.app-header .ant-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
 }
 
 .app-header__trigger {
@@ -426,6 +451,10 @@ svg {
 }
 
 .app-header__titles {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -435,6 +464,7 @@ svg {
   display: block;
   font-size: 17px;
   font-weight: 700;
+  line-height: 1.25;
   color: var(--gx-text);
   white-space: nowrap;
   overflow: hidden;
@@ -442,11 +472,11 @@ svg {
 }
 
 .app-header__meta {
-  margin-top: 2px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--gx-text-muted);
   max-width: 100%;
   white-space: nowrap;
@@ -459,8 +489,10 @@ svg {
 }
 
 .app-user-trigger {
+  display: inline-flex;
   cursor: pointer;
   padding: 8px 10px;
+  min-height: 44px;
   border-radius: 14px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   border: 1px solid transparent;
@@ -481,6 +513,10 @@ svg {
 }
 
 .app-user-trigger__meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
   overflow: hidden;
   text-align: right;
@@ -490,7 +526,7 @@ svg {
   display: block;
   font-weight: 600;
   color: var(--gx-text);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -498,8 +534,8 @@ svg {
 
 .app-user-trigger__role {
   display: block;
-  margin-top: 2px;
   font-size: 12px;
+  line-height: 1.35;
   color: var(--gx-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -965,7 +1001,7 @@ svg {
 
 @media (max-width: 767px) {
   .app-header {
-    padding: 0 12px;
+    padding: 8px 12px !important;
     gap: 10px;
   }
 
