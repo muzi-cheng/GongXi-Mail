@@ -18,7 +18,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
     extra,
 }) => {
     return (
-        <div className="page-header">
+        <div className="page-header page-header--compact">
             {breadcrumb && breadcrumb.length > 0 && (
                 <Breadcrumb
                     className="page-header__breadcrumb"
@@ -32,7 +32,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                     <Title level={4} className="page-header__title">{title}</Title>
                     {subtitle && <Text className="page-header__subtitle">{subtitle}</Text>}
                 </div>
-                {extra && <Space className="page-header__extra">{extra}</Space>}
+                {extra && <Space size={[8, 8]} className="page-header__extra">{extra}</Space>}
             </div>
         </div>
     );

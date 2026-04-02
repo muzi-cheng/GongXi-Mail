@@ -122,6 +122,8 @@ const EMAIL_COLUMN_WIDTH = 240;
 const PASSWORD_MASK = '****************';
 const EMAIL_TABLE_STICKY_OFFSET = 56;
 
+const renderMutedPlaceholder = (value: string = '-') => <Text type="secondary">{value}</Text>;
+
 const normalizeTagValues = (value: unknown): string[] => {
     if (!Array.isArray(value)) {
         return [];
@@ -201,7 +203,7 @@ const EmailsPage: React.FC = () => {
     const [data, setData] = useState<EmailAccount[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(20);
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [importModalVisible, setImportModalVisible] = useState(false);
@@ -244,13 +246,13 @@ const EmailsPage: React.FC = () => {
     const [groupKeyword, setGroupKeyword] = useState('');
     const [debouncedGroupKeyword, setDebouncedGroupKeyword] = useState('');
     const [groupPage, setGroupPage] = useState(1);
-    const [groupPageSize, setGroupPageSize] = useState(10);
+    const [groupPageSize, setGroupPageSize] = useState(20);
     const [groupItems, setGroupItems] = useState<EmailGroup[]>([]);
     const [groupListLoading, setGroupListLoading] = useState(false);
     const [tagItems, setTagItems] = useState<EmailTagItem[]>([]);
     const [tagTotal, setTagTotal] = useState(0);
     const [tagPage, setTagPage] = useState(1);
-    const [tagPageSize, setTagPageSize] = useState(10);
+    const [tagPageSize, setTagPageSize] = useState(20);
     const [tagListLoading, setTagListLoading] = useState(false);
     const [tagManageKeyword, setTagManageKeyword] = useState('');
     const [debouncedTagManageKeyword, setDebouncedTagManageKeyword] = useState('');
@@ -1111,7 +1113,7 @@ const EmailsPage: React.FC = () => {
             responsive: ['sm'],
             render: (hasPassword: boolean, record: EmailAccount) => {
                 if (!hasPassword) {
-                    return <Text type="secondary">-</Text>;
+                    return renderMutedPlaceholder();
                 }
 
                 const visible = visiblePasswordIds.has(record.id);
@@ -1146,7 +1148,7 @@ const EmailsPage: React.FC = () => {
                 const normalizedTags = tags || [];
 
                 if (normalizedTags.length === 0) {
-                    return <Text type="secondary">-</Text>;
+                    return renderMutedPlaceholder();
                 }
 
                 return (
@@ -1167,7 +1169,7 @@ const EmailsPage: React.FC = () => {
             width: 96,
             responsive: ['lg'],
             render: (group: EmailAccount['group']) =>
-                group ? <Tag color="blue">{group.name}</Tag> : <Tag>未分组</Tag>,
+                group ? <Tag color="blue">{group.name}</Tag> : renderMutedPlaceholder('未分组'),
         },
         {
             title: '状态',
@@ -1194,7 +1196,7 @@ const EmailsPage: React.FC = () => {
             key: 'lastCheckAt',
             width: 112,
             responsive: ['xl'],
-            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : '-'),
+            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : renderMutedPlaceholder()),
         },
         {
             title: 'Token 刷新',
@@ -1202,7 +1204,7 @@ const EmailsPage: React.FC = () => {
             key: 'tokenRefreshedAt',
             width: 112,
             responsive: ['xxl'],
-            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : '-'),
+            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : renderMutedPlaceholder()),
         },
         {
             title: '创建时间',
@@ -1215,12 +1217,13 @@ const EmailsPage: React.FC = () => {
         {
             title: '操作',
             key: 'action',
-            width: screens.sm ? 156 : 128,
+            width: screens.sm ? 176 : 148,
             render: (_: unknown, record: EmailAccount) => (
                 <Space size={isMobile ? [4, 4] : 'small'} wrap>
                     <Tooltip title="刷新 Token">
                         <Button
                             type="text"
+                            className="emails-table__action-btn"
                             icon={<SyncOutlined spin={refreshingTokenIds.has(record.id)} />}
                             onClick={() => handleRefreshToken(record)}
                             disabled={refreshingTokenIds.has(record.id) || record.status === 'DISABLED'}
@@ -1229,6 +1232,7 @@ const EmailsPage: React.FC = () => {
                     <Tooltip title="收件箱">
                         <Button
                             type="text"
+                            className="emails-table__action-btn"
                             icon={<MailOutlined />}
                             onClick={() => handleViewMails(record, 'INBOX')}
                         />
@@ -1236,6 +1240,7 @@ const EmailsPage: React.FC = () => {
                     <Tooltip title="垃圾箱">
                         <Button
                             type="text"
+                            className="emails-table__action-btn"
                             icon={<DeleteOutlined className="emails-table__junk-icon" />}
                             onClick={() => handleViewMails(record, 'Junk')}
                         />
@@ -1243,16 +1248,26 @@ const EmailsPage: React.FC = () => {
                     <Tooltip title="编辑">
                         <Button
                             type="text"
+                            className="emails-table__action-btn"
                             icon={<EditOutlined />}
                             onClick={() => handleEdit(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="删除">
+                    <Tooltip title="删除邮箱">
                         <Popconfirm
                             title="确定要删除此邮箱吗？"
+                            description={`删除后无法恢复：${record.email}`}
+                            okText="删除"
+                            cancelText="取消"
+                            okButtonProps={{ danger: true }}
                             onConfirm={() => handleDelete(record.id)}
                         >
-                            <Button type="text" danger icon={<DeleteOutlined />} />
+                            <Button
+                                type="text"
+                                danger
+                                className="emails-table__action-btn emails-table__action-btn--danger"
+                                icon={<DeleteOutlined />}
+                            />
                         </Popconfirm>
                     </Tooltip>
                 </Space>
@@ -1562,6 +1577,10 @@ const EmailsPage: React.FC = () => {
                                         </Button>
                                         <Popconfirm
                                             title={`确定要删除选中的 ${selectedCount} 个邮箱吗？`}
+                                            description="删除后不可恢复，请谨慎操作。"
+                                            okText="删除"
+                                            cancelText="取消"
+                                            okButtonProps={{ danger: true }}
                                             onConfirm={handleBatchDelete}
                                             disabled={!hasSelection}
                                         >

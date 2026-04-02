@@ -5,6 +5,7 @@ import type {
     AxiosResponse,
     InternalAxiosRequestConfig,
 } from 'axios';
+import { resolveAppPath } from '../utils/basePath';
 
 export interface ApiResponse<T = unknown> {
     code: number;
@@ -239,7 +240,7 @@ api.interceptors.response.use(
                 // Token 过期或无效，跳转到登录页
                 localStorage.removeItem('token');
                 localStorage.removeItem('admin');
-                window.location.href = '/login';
+                window.location.replace(resolveAppPath('/login'));
             }
 
             // 新格式错误处理

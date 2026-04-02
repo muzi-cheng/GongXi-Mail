@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     Layout,
     Menu,
     Avatar,
     Dropdown,
-    Breadcrumb,
     Button,
     Drawer,
     Grid,
@@ -34,15 +33,33 @@ const { Header, Sider, Content } = Layout;
 const DESKTOP_SIDER_WIDTH = 248;
 const DESKTOP_SIDER_COLLAPSED_WIDTH = 96;
 
-const menuConfig = [
-    { key: '/dashboard', icon: <DashboardOutlined />, label: '数据概览', title: '数据概览' },
-    { key: '/emails', icon: <MailOutlined />, label: '邮箱管理', title: '邮箱管理' },
-    { key: '/api-keys', icon: <KeyOutlined />, label: 'API Key', title: 'API Key 管理' },
-    { key: '/api-docs', icon: <FileTextOutlined />, label: 'API 文档', title: 'API 文档' },
-    { key: '/operation-logs', icon: <HistoryOutlined />, label: '操作日志', title: '操作日志' },
-    { key: '/system-logs', icon: <FileSearchOutlined />, label: '系统日志', title: '系统日志' },
-    { key: '/admins', icon: <UserOutlined />, label: '管理员', title: '管理员管理', superAdmin: true },
-    { key: '/settings', icon: <SettingOutlined />, label: '系统设置', title: '系统设置' },
+interface AppMenuRouteItem {
+    key: string;
+    icon: React.ReactNode;
+    label: string;
+    title: string;
+    section: 'overview' | 'mail' | 'system';
+    superAdmin?: boolean;
+}
+
+const menuRouteConfig: AppMenuRouteItem[] = [
+    { key: '/dashboard', icon: <DashboardOutlined />, label: '数据概览', title: '数据概览', section: 'overview' },
+    { key: '/operation-logs', icon: <HistoryOutlined />, label: '操作日志', title: '操作日志', section: 'overview' },
+    { key: '/system-logs', icon: <FileSearchOutlined />, label: '系统日志', title: '系统日志', section: 'overview' },
+    { key: '/emails', icon: <MailOutlined />, label: '邮箱管理', title: '邮箱管理', section: 'mail' },
+    { key: '/api-keys', icon: <KeyOutlined />, label: 'API Key', title: 'API Key 管理', section: 'mail' },
+    { key: '/api-docs', icon: <FileTextOutlined />, label: 'API 文档', title: 'API 文档', section: 'mail' },
+    { key: '/settings', icon: <SettingOutlined />, label: '系统设置', title: '系统设置', section: 'system' },
+    { key: '/admins', icon: <UserOutlined />, label: '管理员', title: '管理员管理', section: 'system', superAdmin: true },
+];
+
+const menuSectionConfig: Array<{
+    key: AppMenuRouteItem['section'];
+    label: string;
+}> = [
+    { key: 'overview', label: '概览与日志' },
+    { key: 'mail', label: '邮箱与接口' },
+    { key: 'system', label: '系统管理' },
 ];
 
 const MainLayout: React.FC = () => {
@@ -72,16 +89,36 @@ const MainLayout: React.FC = () => {
         .filter(Boolean)
         .join(' ');
 
+    const availableRoutes = useMemo(
+        () => menuRouteConfig.filter((item) => !item.superAdmin || hasSuperAdminPermission),
+        [hasSuperAdminPermission]
+    );
+
     const menuItems: MenuProps['items'] = useMemo(
         () =>
-            menuConfig
-                .filter((item) => !item.superAdmin || hasSuperAdminPermission)
-                .map((item) => ({
-                    key: item.key,
-                    icon: item.icon,
-                    label: item.label,
-                })),
-        [hasSuperAdminPermission]
+            menuSectionConfig
+                .map((section) => {
+                    const children = availableRoutes
+                        .filter((item) => item.section === section.key)
+                        .map((item) => ({
+                            key: item.key,
+                            icon: item.icon,
+                            label: item.label,
+                        }));
+
+                    if (children.length === 0) {
+                        return null;
+                    }
+
+                    return {
+                        type: 'group' as const,
+                        key: `group-${section.key}`,
+                        label: section.label,
+                        children,
+                    };
+                })
+                .filter(Boolean),
+        [availableRoutes]
     );
 
     const handleLogout = async () => {
@@ -118,7 +155,7 @@ const MainLayout: React.FC = () => {
         },
     ];
 
-    const currentMenu = menuConfig.find(
+    const currentMenu = availableRoutes.find(
         (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
     );
     const pageTitle = currentMenu?.title || '管理后台';
@@ -189,15 +226,9 @@ const MainLayout: React.FC = () => {
                         />
 
                         <div className="app-header__titles">
-                            <span className="app-header__title">{pageTitle}</span>
+                            <span className="app-header__title">GongXi Mail Console</span>
                             <span className="app-header__meta">
-                                <Breadcrumb
-                                    className="app-breadcrumb"
-                                    items={[
-                                        { title: <Link to="/dashboard">首页</Link> },
-                                        { title: pageTitle },
-                                    ]}
-                                />
+                                当前模块：{pageTitle}
                             </span>
                         </div>
                     </div>

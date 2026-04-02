@@ -83,6 +83,10 @@ interface OAuthTokenResponse {
 const TOKEN_REFRESH_ERROR_PREFIX = 'Token refresh';
 const SYSTEM_CONFIG_ID = 1;
 const RECENT_FAILURE_LIMIT = 10;
+const AUTO_REQUEST_STAGGER_MIN_MS = 250;
+const AUTO_REQUEST_STAGGER_MAX_MS = 1_250;
+const AUTO_BATCH_JITTER_MIN_MS = 4_000;
+const AUTO_BATCH_JITTER_MAX_MS = 12_000;
 
 const systemConfigSelect = {
     tokenRefreshEnabled: true,
@@ -134,6 +138,27 @@ async function runWithConcurrency<T>(
         () => worker()
     );
     await Promise.all(workers);
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRandomInt(min: number, max: number): number {
+    const lower = Math.ceil(Math.min(min, max));
+    const upper = Math.floor(Math.max(min, max));
+    return Math.floor(Math.random() * (upper - lower + 1)) + lower;
+}
+
+function shuffleItems<T>(items: T[]): T[] {
+    const cloned = [...items];
+
+    for (let index = cloned.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [cloned[index], cloned[swapIndex]] = [cloned[swapIndex], cloned[index]];
+    }
+
+    return cloned;
 }
 
 function formatTokenRefreshError(message: string): string {
@@ -463,14 +488,19 @@ export const tokenRefreshService = {
             });
 
             const config = await this.getTokenRefreshConfig();
-            const concurrency = options?.concurrency || config.concurrency;
+            const concurrency = Math.max(1, options?.concurrency ?? config.concurrency);
+            const isAutoTrigger = trigger === 'AUTO';
+            const accountsToRefresh = isAutoTrigger ? shuffleItems(accounts) : accounts;
+            const totalBatches = isAutoTrigger
+                ? Math.ceil(accountsToRefresh.length / concurrency)
+                : (accountsToRefresh.length > 0 ? 1 : 0);
             const results: RefreshResult[] = [];
             currentRun = {
                 trigger,
                 groupId,
                 requestedById,
                 requestedByUsername,
-                total: accounts.length,
+                total: accountsToRefresh.length,
                 completed: 0,
                 success: 0,
                 failed: 0,
@@ -487,11 +517,13 @@ export const tokenRefreshService = {
                 groupId,
                 requestedById,
                 requestedByUsername,
-                total: accounts.length,
+                total: accountsToRefresh.length,
                 concurrency,
+                totalBatches,
+                jitterEnabled: isAutoTrigger,
             }, trigger === 'AUTO' ? '自动批量刷新 Token 开始' : '手动批量刷新 Token 开始');
 
-            await runWithConcurrency(accounts, concurrency, async (account) => {
+            const handleSingleAccountRefresh = async (account: { id: number }) => {
                 const result = await this.refreshSingleToken(account.id);
                 results.push(result);
                 if (!currentRun) {
@@ -506,7 +538,61 @@ export const tokenRefreshService = {
                     currentRun.failed += 1;
                     appendRecentFailure(currentRun.recentFailures, result);
                 }
-            });
+            };
+
+            if (isAutoTrigger && accountsToRefresh.length > 0) {
+                const batchSize = concurrency;
+
+                for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
+                    const batch = accountsToRefresh.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+
+                    logger.info({
+                        systemEvent: true,
+                        action: 'token_refresh.auto_batch_started',
+                        trigger,
+                        batchIndex: batchIndex + 1,
+                        totalBatches,
+                        batchSize: batch.length,
+                        completedBeforeBatch: currentRun?.completed ?? 0,
+                    }, '自动刷新批次开始');
+
+                    await runWithConcurrency(batch, batchSize, async (account) => {
+                        await sleep(getRandomInt(AUTO_REQUEST_STAGGER_MIN_MS, AUTO_REQUEST_STAGGER_MAX_MS));
+                        await handleSingleAccountRefresh(account);
+                    });
+
+                    if (currentRun) {
+                        currentRun.durationMs = Date.now() - startedAt.getTime();
+                    }
+
+                    logger.info({
+                        systemEvent: true,
+                        action: 'token_refresh.auto_batch_completed',
+                        trigger,
+                        batchIndex: batchIndex + 1,
+                        totalBatches,
+                        batchSize: batch.length,
+                        completed: currentRun?.completed ?? 0,
+                        success: currentRun?.success ?? 0,
+                        failed: currentRun?.failed ?? 0,
+                    }, '自动刷新批次完成');
+
+                    if (batchIndex < totalBatches - 1) {
+                        const jitterMs = getRandomInt(AUTO_BATCH_JITTER_MIN_MS, AUTO_BATCH_JITTER_MAX_MS);
+                        logger.info({
+                            systemEvent: true,
+                            action: 'token_refresh.auto_batch_jitter',
+                            trigger,
+                            batchIndex: batchIndex + 1,
+                            totalBatches,
+                            waitMs: jitterMs,
+                        }, '自动刷新批次间等待中');
+                        await sleep(jitterMs);
+                    }
+                }
+            } else {
+                await runWithConcurrency(accountsToRefresh, concurrency, handleSingleAccountRefresh);
+            }
 
             const completedAt = new Date();
             const batchResult: BatchRefreshResult = {
@@ -514,7 +600,7 @@ export const tokenRefreshService = {
                 groupId,
                 requestedById,
                 requestedByUsername,
-                total: accounts.length,
+                total: accountsToRefresh.length,
                 success: results.filter((item) => item.success).length,
                 failed: results.filter((item) => !item.success).length,
                 durationMs: completedAt.getTime() - startedAt.getTime(),

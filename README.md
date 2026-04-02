@@ -45,6 +45,16 @@ docker-compose up -d --build
 
 访问 http://localhost:3000
 
+如果你把前端挂在反向代理的**子路径**下（例如 `https://example.com/gongxi/`），构建前请额外设置：
+
+```bash
+export VITE_APP_BASE="/gongxi/"
+# 如果反向代理后的 API 也带子路径，可按需设置
+export VITE_API_BASE_URL="/gongxi"
+```
+
+`docker-compose.yml.example` 已支持把这两个变量作为前端构建参数传入镜像。
+
 ### 健康检查
 
 ```bash

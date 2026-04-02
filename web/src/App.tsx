@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { App as AntApp, Spin } from 'antd';
 import { useAuthStore } from './stores/authStore';
 import { isSuperAdmin } from './utils/auth';
+import { getRouterBasename } from './utils/basePath';
 
 // Pages (lazy loaded)
 const LoginPage = lazy(() => import('./pages/login'));
@@ -15,6 +16,8 @@ const OperationLogsPage = lazy(() => import('./pages/operation-logs'));
 const SystemLogsPage = lazy(() => import('./pages/system-logs'));
 const AdminsPage = lazy(() => import('./pages/admins'));
 const SettingsPage = lazy(() => import('./pages/settings'));
+
+const routerBasename = getRouterBasename();
 
 const PageFallback: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
@@ -57,7 +60,7 @@ const App: React.FC = () => {
 
   return (
     <AntApp>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBasename}>
         <Routes>
           {/* 登录页 */}
           <Route path="/login" element={withSuspense(<LoginPage />)} />

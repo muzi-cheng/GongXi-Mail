@@ -1,6 +1,9 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+ARG VITE_APP_BASE=/
+ARG VITE_API_BASE_URL=
+
 WORKDIR /app
 
 # Install dependencies for server
@@ -22,6 +25,8 @@ RUN cd server && npx prisma generate
 RUN cd server && npm run build
 
 # Build frontend
+ENV VITE_APP_BASE=$VITE_APP_BASE
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN cd web && npm run build
 
 # Production stage

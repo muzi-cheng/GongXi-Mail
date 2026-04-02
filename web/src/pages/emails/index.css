@@ -69,6 +69,39 @@
   color: #faad14;
 }
 
+.emails-page .emails-table .emails-table__action-btn,
+.emails-page .emails-table .emails-table__action-btn:hover,
+.emails-page .emails-table .emails-table__action-btn:focus,
+.emails-page .emails-table .emails-table__action-btn:active {
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  box-shadow: none !important;
+}
+
+.emails-page .emails-table .emails-table__action-btn:hover,
+.emails-page .emails-table .emails-table__action-btn:focus {
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+}
+
+.emails-page .emails-table .emails-table__action-btn--danger,
+.emails-page .emails-table .emails-table__action-btn--danger:hover,
+.emails-page .emails-table .emails-table__action-btn--danger:focus,
+.emails-page .emails-table .emails-table__action-btn--danger:active {
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.22) !important;
+  background: rgba(220, 38, 38, 0.08) !important;
+}
+
 .emails-page .emails-table .emails-table__tag {
   margin-inline-end: 0;
 }

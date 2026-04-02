@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Input, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../components';
@@ -58,6 +58,22 @@ function getLevelColor(level: SystemLogLevel) {
     }
 }
 
+function getLevelClassName(level: SystemLogLevel) {
+    return `system-logs-page__level-tag system-logs-page__level-tag--${level}`;
+}
+
+function getTriggerLabel(trigger: string | null) {
+    if (trigger === 'AUTO') {
+        return '自动任务';
+    }
+
+    if (trigger === 'MANUAL') {
+        return '手动操作';
+    }
+
+    return '未标记';
+}
+
 const SystemLogsPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [logs, setLogs] = useState<SystemLogItem[]>([]);
@@ -66,6 +82,7 @@ const SystemLogsPage: React.FC = () => {
     const [keyword, setKeyword] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [lines, setLines] = useState(200);
+    const renderEmpty = (value: string = '-') => <Text type="secondary">{value}</Text>;
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
@@ -97,7 +114,7 @@ const SystemLogsPage: React.FC = () => {
             title: '时间',
             dataIndex: 'time',
             key: 'time',
-            width: 180,
+            width: 172,
             render: (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'),
         },
         {
@@ -105,44 +122,61 @@ const SystemLogsPage: React.FC = () => {
             dataIndex: 'level',
             key: 'level',
             width: 100,
-            render: (level: SystemLogLevel) => <Tag color={getLevelColor(level)}>{level.toUpperCase()}</Tag>,
+            render: (level: SystemLogLevel) => (
+                <Tag color={getLevelColor(level)} className={getLevelClassName(level)}>
+                    {level.toUpperCase()}
+                </Tag>
+            ),
         },
         {
             title: '操作',
             dataIndex: 'action',
             key: 'action',
-            width: 220,
-            render: (action: string | null) => action ? <Text code>{action}</Text> : <Text type="secondary">-</Text>,
+            width: 280,
+            render: (action: string | null) => action ? (
+                <Tooltip title={action}>
+                    <Text code className="system-logs-page__action-text">{action}</Text>
+                </Tooltip>
+            ) : renderEmpty(),
         },
         {
-            title: '操作者',
-            dataIndex: 'actorUsername',
-            key: 'actorUsername',
-            width: 140,
-            render: (value: string | null) => value || <Text type="secondary">系统</Text>,
-        },
-        {
-            title: '触发',
-            dataIndex: 'trigger',
-            key: 'trigger',
-            width: 100,
-            render: (trigger: string | null) => trigger
-                ? <Tag color={trigger === 'AUTO' ? 'blue' : 'gold'}>{trigger}</Tag>
-                : <Text type="secondary">-</Text>,
+            title: '来源',
+            key: 'source',
+            width: 176,
+            render: (_: unknown, record: SystemLogItem) => (
+                <div className="system-logs-page__source">
+                    <span
+                        className={[
+                            'system-logs-page__source-name',
+                            record.actorUsername ? '' : 'system-logs-page__source-name--system',
+                        ].filter(Boolean).join(' ')}
+                    >
+                        {record.actorUsername || '系统'}
+                    </span>
+                    <Tag color={record.trigger === 'AUTO' ? 'blue' : record.trigger === 'MANUAL' ? 'gold' : 'default'}>
+                        {getTriggerLabel(record.trigger)}
+                    </Tag>
+                </div>
+            ),
         },
         {
             title: '消息',
             dataIndex: 'message',
             key: 'message',
             ellipsis: true,
+            render: (message: string) => (
+                <Tooltip title={message}>
+                    <span className="system-logs-page__message-text">{message}</span>
+                </Tooltip>
+            ),
         },
     ];
 
     return (
-        <div>
+        <div className="page-stack system-logs-page">
             <PageHeader
                 title="系统日志"
-                subtitle="查看后台业务事件日志，例如新增、修改、删除、刷新和系统任务"
+                subtitle="查看系统任务、后台事件与刷新动作日志，便于快速排查异常。"
                 extra={(
                     <Button icon={<ReloadOutlined />} onClick={() => void fetchLogs()}>
                         刷新
@@ -150,7 +184,7 @@ const SystemLogsPage: React.FC = () => {
                 )}
             />
 
-            <Card bordered={false}>
+            <Card bordered={false} className="page-card page-card--table system-logs-page__card">
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Alert
                         type="info"
@@ -159,36 +193,43 @@ const SystemLogsPage: React.FC = () => {
                         description={filePath || '当前还没有生成日志文件'}
                     />
 
-                    <Space wrap>
-                        <Select
-                            value={levelFilter || ''}
-                            options={levelOptions}
-                            style={{ width: 150 }}
-                            onChange={(value) => setLevelFilter((value || undefined) as SystemLogLevel | undefined)}
-                        />
-                        <Select
-                            value={lines}
-                            options={lineOptions}
-                            style={{ width: 140 }}
-                            onChange={setLines}
-                        />
-                        <Input.Search
-                            placeholder="搜索日志关键字"
-                            value={keywordInput}
-                            onChange={(event) => setKeywordInput(event.target.value)}
-                            onSearch={(value) => setKeyword(value.trim())}
-                            allowClear
-                            style={{ width: 260 }}
-                        />
-                    </Space>
+                    <div className="page-filter-row system-logs-page__filters">
+                        <div className="page-filter-row__group">
+                            <Select
+                                value={levelFilter || ''}
+                                options={levelOptions}
+                                style={{ width: 150 }}
+                                onChange={(value) => setLevelFilter((value || undefined) as SystemLogLevel | undefined)}
+                            />
+                            <Select
+                                value={lines}
+                                options={lineOptions}
+                                style={{ width: 140 }}
+                                onChange={setLines}
+                            />
+                            <Input.Search
+                                placeholder="搜索日志关键字"
+                                value={keywordInput}
+                                onChange={(event) => setKeywordInput(event.target.value)}
+                                onSearch={(value) => setKeyword(value.trim())}
+                                allowClear
+                                style={{ width: 320, maxWidth: '100%' }}
+                            />
+                        </div>
+                        <div className="page-filter-row__group system-logs-page__summary">
+                            <Text type="secondary">当前展示 {logs.length} 条日志</Text>
+                        </div>
+                    </div>
 
                     <Table
+                        className="system-logs-page__table"
                         rowKey="id"
                         dataSource={logs}
                         columns={columns}
                         loading={loading}
                         pagination={false}
                         locale={{ emptyText: '暂无系统日志' }}
+                        scroll={{ x: 980 }}
                         expandable={{
                             expandedRowRender: (record: SystemLogItem) => (
                                 <div style={{ display: 'grid', gap: 12 }}>
