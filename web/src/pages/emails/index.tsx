@@ -1217,9 +1217,9 @@ const EmailsPage: React.FC = () => {
         {
             title: '操作',
             key: 'action',
-            width: screens.sm ? 176 : 148,
+            width: screens.sm ? 212 : 188,
             render: (_: unknown, record: EmailAccount) => (
-                <Space size={isMobile ? [4, 4] : 'small'} wrap>
+                <Space size={6} wrap={false} className="emails-table__actions">
                     <Tooltip title="刷新 Token">
                         <Button
                             type="text"
@@ -1318,7 +1318,7 @@ const EmailsPage: React.FC = () => {
     );
 
     const emailTableScroll = useMemo(
-        () => (isMobile ? { x: 620 } : { x: 'max-content' }),
+        () => (isMobile ? { x: 700 } : { x: 'max-content', y: 'calc(100vh - 360px)' }),
         [isMobile]
     );
 
@@ -1602,7 +1602,7 @@ const EmailsPage: React.FC = () => {
                                 <div className="page-filter-row emails-page__filters">
                                     <div className="page-filter-row__group">
                                         <Input
-                                            className="emails-page__filter-control"
+                                            className="emails-page__filter-control emails-page__filter-control--lg"
                                             placeholder="搜索邮箱"
                                             prefix={<SearchOutlined />}
                                             value={keyword}
@@ -1610,7 +1610,7 @@ const EmailsPage: React.FC = () => {
                                             allowClear
                                         />
                                         <Input
-                                            className="emails-page__filter-control"
+                                            className="emails-page__filter-control emails-page__filter-control--md"
                                             placeholder="按标签搜索（子串）"
                                             prefix={<SearchOutlined />}
                                             value={tagKeyword}
@@ -1694,7 +1694,7 @@ const EmailsPage: React.FC = () => {
                                 <div className="page-filter-row emails-page__filters">
                                     <div className="page-filter-row__group">
                                         <Input
-                                            className="emails-page__filter-control"
+                                            className="emails-page__filter-control emails-page__filter-control--md"
                                             placeholder="搜索标签（支持子串）"
                                             prefix={<SearchOutlined />}
                                             value={tagManageKeyword}
@@ -1767,7 +1767,7 @@ const EmailsPage: React.FC = () => {
                                 <div className="page-filter-row emails-page__filters">
                                     <div className="page-filter-row__group">
                                         <Input
-                                            className="emails-page__filter-control"
+                                            className="emails-page__filter-control emails-page__filter-control--md"
                                             placeholder="搜索分组名称/描述"
                                             prefix={<SearchOutlined />}
                                             value={groupKeyword}

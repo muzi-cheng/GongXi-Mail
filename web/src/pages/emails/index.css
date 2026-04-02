@@ -120,7 +120,8 @@
 }
 
 .emails-page__toolbar {
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px 16px;
 }
 
 .emails-page__toolbar .page-toolbar__group,
@@ -128,40 +129,96 @@
   min-width: 0;
 }
 
+.emails-page__toolbar .page-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emails-page__toolbar .page-toolbar__group:first-child {
+  flex: 1 1 auto;
+}
+
+.emails-page__toolbar .page-toolbar__group:last-child {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .emails-page__filters {
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 12px 16px;
 }
 
+.emails-page__filters .page-filter-row__group {
+  flex-wrap: nowrap;
+}
+
+.emails-page__filters .page-filter-row__group:first-child {
+  flex: 1 1 auto;
+}
+
 .emails-page__filter-control {
-  width: clamp(220px, 26vw, 280px);
+  width: clamp(220px, 24vw, 300px);
+  min-width: 180px;
+  flex: 0 1 auto;
+}
+
+.emails-page__filter-control--lg {
+  width: clamp(240px, 24vw, 320px);
   min-width: 220px;
 }
 
+.emails-page__filter-control--md {
+  width: clamp(170px, 16vw, 220px);
+  min-width: 150px;
+}
+
 .emails-page__filter-control--sm {
-  width: 200px;
-  min-width: 180px;
-  max-width: 220px;
+  width: clamp(150px, 14vw, 190px);
+  min-width: 130px;
+  max-width: 190px;
 }
 
 .emails-page__pagination-group {
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .emails-page__pagination-group .ant-pagination {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .emails-page__table-card {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .emails-page__table-card .ant-card-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.emails-page__table-card .ant-table-wrapper {
   overflow-x: auto;
 }
 
 .emails-page__table-card .ant-table-wrapper,
 .emails-page__table-card .ant-table-container {
   min-width: 0;
+}
+
+.emails-page .emails-table .emails-table__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.emails-page .emails-table .emails-table__actions > span {
+  display: inline-flex;
 }
 
 .emails-page .emails-table .ant-table-cell,
@@ -356,6 +413,7 @@
   .emails-page__toolbar,
   .emails-page__filters {
     gap: 10px;
+    flex-wrap: wrap;
   }
 
   .emails-page__toolbar .page-toolbar__group {
@@ -368,6 +426,8 @@
   }
 
   .emails-page__filter-control,
+  .emails-page__filter-control--lg,
+  .emails-page__filter-control--md,
   .emails-page__filter-control--sm,
   .emails-page__modal-control--sm,
   .emails-page__modal-control--md {
@@ -383,6 +443,7 @@
 
   .emails-page__pagination-group .ant-pagination {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 

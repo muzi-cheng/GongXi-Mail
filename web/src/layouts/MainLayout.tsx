@@ -94,7 +94,7 @@ const MainLayout: React.FC = () => {
         [hasSuperAdminPermission]
     );
 
-    const menuItems: MenuProps['items'] = useMemo(
+    const groupedMenuItems: MenuProps['items'] = useMemo(
         () =>
             menuSectionConfig
                 .map((section) => {
@@ -118,6 +118,17 @@ const MainLayout: React.FC = () => {
                     };
                 })
                 .filter(Boolean),
+        [availableRoutes]
+    );
+
+    const collapsedMenuItems: MenuProps['items'] = useMemo(
+        () =>
+            availableRoutes.map((item) => ({
+                key: item.key,
+                icon: item.icon,
+                label: item.label,
+                title: item.label,
+            })),
         [availableRoutes]
     );
 
@@ -160,14 +171,15 @@ const MainLayout: React.FC = () => {
     );
     const pageTitle = currentMenu?.title || '管理后台';
     const selectedKeys = currentMenu ? [currentMenu.key] : [];
+    const menuItems = !isMobile && collapsed ? collapsedMenuItems : groupedMenuItems;
 
     const renderLogo = (compact: boolean) => (
         <div className="app-logo">
             <div className="app-logo__inner">
-                <div className="app-logo__badge">GX</div>
+                <div className="app-logo__badge">O</div>
                 {!compact && (
                     <div className="app-logo__text">
-                        <div className="app-logo__title">GongXi Mail</div>
+                        <div className="app-logo__title">Outlook</div>
                         <div className="app-logo__subtitle">邮箱管理控制台</div>
                     </div>
                 )}
@@ -204,7 +216,7 @@ const MainLayout: React.FC = () => {
                     <div className="app-sider__footer">
                         简约模式 · 响应式布局
                         <br />
-                        GongXi Mail Console
+                        Outlook Console
                     </div>
                 </Sider>
             )}
@@ -226,7 +238,7 @@ const MainLayout: React.FC = () => {
                         />
 
                         <div className="app-header__titles">
-                            <span className="app-header__title">GongXi Mail Console</span>
+                            <span className="app-header__title">Outlook Console</span>
                             <span className="app-header__meta">
                                 当前模块：{pageTitle}
                             </span>
@@ -264,7 +276,11 @@ const MainLayout: React.FC = () => {
                 onClose={() => setMobileNavOpen(false)}
             >
                 {menuNode}
-                <div className="app-sider__footer">简约模式 · 移动端已适配</div>
+                <div className="app-sider__footer">
+                    简约模式 · 移动端已适配
+                    <br />
+                    Outlook Console
+                </div>
             </Drawer>
         </Layout>
     );

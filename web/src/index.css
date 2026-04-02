@@ -110,6 +110,58 @@ svg {
   border-radius: inherit;
 }
 
+.ant-table-wrapper {
+  background: var(--gx-surface);
+  isolation: isolate;
+}
+
+.ant-table-wrapper .ant-spin-nested-loading,
+.ant-table-wrapper .ant-spin-container,
+.ant-table-wrapper .ant-table,
+.ant-table-wrapper .ant-table-container,
+.ant-table-wrapper .ant-table-header,
+.ant-table-wrapper .ant-table-content,
+.ant-table-wrapper .ant-table-body,
+.ant-table-wrapper .ant-table-body-inner {
+  border-radius: inherit;
+}
+
+.ant-table-wrapper .ant-spin-container,
+.ant-table-wrapper .ant-table-container {
+  overflow: hidden;
+}
+
+.ant-table-wrapper .ant-table-thead > tr:first-child > th,
+.ant-table-wrapper .ant-table-thead > tr:first-child > td,
+.ant-table-wrapper .ant-table-tbody > tr:last-child > td,
+.ant-table-wrapper .ant-table-summary > tr:last-child > td,
+.ant-table-wrapper .ant-table-placeholder .ant-table-cell {
+  background-clip: padding-box;
+}
+
+.ant-table-wrapper .ant-table-thead > tr:first-child > th:first-child,
+.ant-table-wrapper .ant-table-thead > tr:first-child > td:first-child {
+  border-top-left-radius: var(--gx-radius);
+}
+
+.ant-table-wrapper .ant-table-thead > tr:first-child > th:last-child,
+.ant-table-wrapper .ant-table-thead > tr:first-child > td:last-child,
+.ant-table-wrapper .ant-table-thead > tr:first-child > .ant-table-cell-scrollbar {
+  border-top-right-radius: var(--gx-radius);
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:last-child > td:first-child,
+.ant-table-wrapper .ant-table-summary > tr:last-child > td:first-child,
+.ant-table-wrapper .ant-table-placeholder .ant-table-cell:first-child {
+  border-bottom-left-radius: var(--gx-radius);
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:last-child > td:last-child,
+.ant-table-wrapper .ant-table-summary > tr:last-child > td:last-child,
+.ant-table-wrapper .ant-table-placeholder .ant-table-cell:last-child {
+  border-bottom-right-radius: var(--gx-radius);
+}
+
 .ant-btn {
   font-weight: 600;
 }
@@ -203,8 +255,8 @@ svg {
 }
 
 .app-logo__badge {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
@@ -212,13 +264,15 @@ svg {
   flex-shrink: 0;
   background: var(--gx-primary);
   color: #fff;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 
 .app-logo__text {
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .app-logo__title {
@@ -226,6 +280,9 @@ svg {
   font-weight: 700;
   color: var(--gx-text);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-logo__subtitle {
@@ -233,6 +290,8 @@ svg {
   font-size: 12px;
   color: var(--gx-text-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-menu {
@@ -260,6 +319,41 @@ svg {
   padding-inline: 14px !important;
   font-weight: 600;
   border-radius: 12px;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-logo {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-logo__inner {
+  width: 100%;
+  justify-content: center;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-menu .ant-menu-item-group-title,
+.app-sider.ant-layout-sider-collapsed .app-sider__footer {
+  display: none;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed {
+  width: 100%;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item,
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0 !important;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item .ant-menu-item-icon,
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .ant-menu-item-icon,
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item .anticon,
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .anticon {
+  margin-inline-end: 0;
+  font-size: 18px;
 }
 
 .app-sider__footer {
@@ -295,6 +389,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: nowrap;
   background: #ffffff !important;
   border: 1px solid var(--gx-border);
   border-radius: 18px;
@@ -311,7 +406,15 @@ svg {
 
 .app-header__left {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
+}
+
+.app-header__right {
+  min-width: 0;
+  margin-left: auto;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  max-width: min(100%, 320px);
 }
 
 .app-header__trigger {
@@ -324,6 +427,8 @@ svg {
 
 .app-header__titles {
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .app-header__title {
@@ -343,6 +448,10 @@ svg {
   gap: 8px;
   font-size: 12px;
   color: var(--gx-text-muted);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-breadcrumb {
@@ -355,6 +464,9 @@ svg {
   border-radius: 14px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   border: 1px solid transparent;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .app-user-trigger:hover {
@@ -370,6 +482,8 @@ svg {
 
 .app-user-trigger__meta {
   min-width: 0;
+  overflow: hidden;
+  text-align: right;
 }
 
 .app-user-trigger__name {
@@ -377,6 +491,9 @@ svg {
   font-weight: 600;
   color: var(--gx-text);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-user-trigger__role {
@@ -384,6 +501,9 @@ svg {
   margin-top: 2px;
   font-size: 12px;
   color: var(--gx-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-content-shell {
@@ -849,6 +969,10 @@ svg {
     gap: 10px;
   }
 
+  .app-header__right {
+    max-width: 45%;
+  }
+
   .app-header__meta,
   .app-user-trigger__role {
     display: none;
@@ -916,6 +1040,10 @@ svg {
 
   .app-header__title {
     font-size: 16px;
+  }
+
+  .app-user-trigger__meta {
+    display: none;
   }
 
   .stat-card__content {

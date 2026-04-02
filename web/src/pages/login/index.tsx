@@ -87,7 +87,7 @@ const LoginPage: React.FC = () => {
                 <section className="login-page__hero">
                     <div>
                         <span className="login-page__eyebrow">轻量 · 简洁 · 高效</span>
-                        <h1 className="login-page__title">GongXi Mail</h1>
+                        <h1 className="login-page__title">Outlook</h1>
                         <p className="login-page__description">
                             统一管理邮箱、API Key 与系统日志。全新简约 UI，支持桌面与手机端流畅使用。
                         </p>
