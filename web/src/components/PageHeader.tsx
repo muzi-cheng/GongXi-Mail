@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Typography, Breadcrumb, Space } from 'antd';
 
 const { Title, Text } = Typography;
@@ -17,21 +18,21 @@ const PageHeader: React.FC<PageHeaderProps> = ({
     extra,
 }) => {
     return (
-        <div style={{ marginBottom: 24 }}>
+        <div className="page-header">
             {breadcrumb && breadcrumb.length > 0 && (
                 <Breadcrumb
+                    className="page-header__breadcrumb"
                     items={breadcrumb.map((item) => ({
-                        title: item.path ? <a href={item.path}>{item.title}</a> : item.title,
+                        title: item.path ? <Link to={item.path}>{item.title}</Link> : item.title,
                     }))}
-                    style={{ marginBottom: 8 }}
                 />
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <Title level={4} style={{ marginBottom: 0 }}>{title}</Title>
-                    {subtitle && <Text type="secondary">{subtitle}</Text>}
+            <div className="page-header__main">
+                <div className="page-header__titles">
+                    <Title level={4} className="page-header__title">{title}</Title>
+                    {subtitle && <Text className="page-header__subtitle">{subtitle}</Text>}
                 </div>
-                {extra && <Space>{extra}</Space>}
+                {extra && <Space className="page-header__extra">{extra}</Space>}
             </div>
         </div>
     );

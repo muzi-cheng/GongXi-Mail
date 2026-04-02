@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Space, Typography } from 'antd';
+import type { CSSProperties } from 'react';
+import { Card, Typography } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -29,51 +30,43 @@ const StatCard: React.FC<StatCardProps> = ({
         if (trend === undefined) return null;
 
         const isUp = trend >= 0;
-        const color = isUp ? '#52c41a' : '#ff4d4f';
         const Icon = isUp ? ArrowUpOutlined : ArrowDownOutlined;
+        const trendClassName = isUp ? 'stat-card__trend stat-card__trend--up' : 'stat-card__trend stat-card__trend--down';
 
         return (
-            <Space size={4} style={{ marginTop: 8 }}>
-                <Icon style={{ color, fontSize: 12 }} />
-                <Text style={{ color, fontSize: 12 }}>
+            <div className={trendClassName}>
+                <Icon className="stat-card__trend-icon" />
+                <Text className="stat-card__trend-value">
                     {Math.abs(trend)}%
                 </Text>
                 {trendLabel && (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                    <Text className="stat-card__trend-label">
                         {trendLabel}
                     </Text>
                 )}
-            </Space>
+            </div>
         );
     };
 
     return (
         <Card
+            className="stat-card"
             bordered={false}
             loading={loading}
-            styles={{ body: { padding: '20px 24px' } }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="stat-card__content">
                 <div>
-                    <Text type="secondary" style={{ fontSize: 14 }}>{title}</Text>
-                    <div style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>
-                        {value}{suffix && <span style={{ fontSize: 14, marginLeft: 4 }}>{suffix}</span>}
+                    <Text className="stat-card__title">{title}</Text>
+                    <div className="stat-card__value">
+                        {value}
+                        {suffix && <span className="stat-card__suffix">{suffix}</span>}
                     </div>
                     {renderTrend()}
                 </div>
                 {icon && (
                     <div
-                        style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 12,
-                            backgroundColor: iconBgColor,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 24,
-                            color: '#fff',
-                        }}
+                        className="stat-card__icon"
+                        style={{ '--stat-card-icon-bg': iconBgColor } as CSSProperties}
                     >
                         {icon}
                     </div>

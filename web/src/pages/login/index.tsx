@@ -82,74 +82,95 @@ const LoginPage: React.FC = () => {
     };
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#f0f2f5',
-            }}
-        >
-            <Card
-                style={{
-                    width: 380,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                }}
-            >
-                <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                    <Title level={3} style={{ margin: '0 0 8px 0' }}>
-                        GongXi 邮箱
-                    </Title>
-                    <Text type="secondary">管理控制台</Text>
-                </div>
+        <div className="login-page">
+            <div className="login-page__panel">
+                <section className="login-page__hero">
+                    <div>
+                        <span className="login-page__eyebrow">轻量 · 简洁 · 高效</span>
+                        <h1 className="login-page__title">GongXi Mail</h1>
+                        <p className="login-page__description">
+                            统一管理邮箱、API Key 与系统日志。全新简约 UI，支持桌面与手机端流畅使用。
+                        </p>
+                    </div>
 
-                <Form
-                    name="login"
-                    onFinish={handleSubmit}
-                    size="large"
-                >
-                    <Form.Item
-                        name="username"
-                        rules={[{ required: true, message: '请输入用户名' }]}
+                    <div className="login-page__features">
+                        <div className="login-page__feature">
+                            <div className="login-page__feature-title">移动端友好</div>
+                            <div className="login-page__feature-text">菜单与核心操作在手机上可直接完成。</div>
+                        </div>
+                        <div className="login-page__feature">
+                            <div className="login-page__feature-title">统一操作流</div>
+                            <div className="login-page__feature-text">邮箱、分组、标签和 API 管理全部集中化。</div>
+                        </div>
+                        <div className="login-page__feature">
+                            <div className="login-page__feature-title">安全增强</div>
+                            <div className="login-page__feature-text">支持 2FA 校验与敏感信息保护。</div>
+                        </div>
+                        <div className="login-page__feature">
+                            <div className="login-page__feature-title">实时可观测</div>
+                            <div className="login-page__feature-text">看板、操作日志、系统日志统一可视化。</div>
+                        </div>
+                    </div>
+                </section>
+
+                <Card className="login-card" bordered={false}>
+                    <div className="login-card__header">
+                        <Title level={3} className="login-card__title">
+                            登录控制台
+                        </Title>
+                        <Text className="login-card__subtitle">请输入管理员账号信息</Text>
+                    </div>
+
+                    <Form
+                        name="login"
+                        onFinish={handleSubmit}
+                        size="large"
+                        layout="vertical"
                     >
-                        <Input
-                            prefix={<UserOutlined />}
-                            placeholder="用户名"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="password"
-                        rules={[{ required: true, message: '请输入密码' }]}
-                    >
-                        <Input.Password
-                            prefix={<LockOutlined />}
-                            placeholder="密码"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        style={{ marginTop: -6, marginBottom: 16 }}
-                    >
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            若账号已启用 2FA，下一步会弹窗输入验证码
-                        </Text>
-                    </Form.Item>
-
-                    <Form.Item style={{ marginBottom: 0 }}>
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            loading={loading}
-                            block
+                        <Form.Item
+                            name="username"
+                            label="用户名"
+                            rules={[{ required: true, message: '请输入用户名' }]}
                         >
-                            登录
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Card>
+                            <Input
+                                prefix={<UserOutlined />}
+                                placeholder="请输入用户名"
+                                autoComplete="username"
+                            />
+                        </Form.Item>
 
+                        <Form.Item
+                            name="password"
+                            label="密码"
+                            rules={[{ required: true, message: '请输入密码' }]}
+                        >
+                            <Input.Password
+                                prefix={<LockOutlined />}
+                                placeholder="请输入密码"
+                                autoComplete="current-password"
+                            />
+                        </Form.Item>
+
+                        <Form.Item style={{ marginTop: -6, marginBottom: 16 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                若账号已启用 2FA，登录后会继续弹窗输入 6 位验证码
+                            </Text>
+                        </Form.Item>
+
+                        <Form.Item style={{ marginBottom: 0 }}>
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={loading}
+                                block
+                            >
+                                登录
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </Card>
+            </div>
+            
             <Modal
                 title="二次验证"
                 open={otpModalVisible}

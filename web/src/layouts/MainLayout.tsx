@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
     Layout,
     Menu,
     Avatar,
     Dropdown,
-    theme,
-    Typography,
-    Space,
     Breadcrumb,
+    Button,
+    Drawer,
+    Grid,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -20,16 +20,19 @@ import {
     LogoutOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    MenuOutlined,
     FileTextOutlined,
     HistoryOutlined,
     FileSearchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../api';
-import { isSuperAdmin } from '../utils/auth';
+import { getAdminRoleLabel, isSuperAdmin } from '../utils/auth';
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
+
+const DESKTOP_SIDER_WIDTH = 248;
+const DESKTOP_SIDER_COLLAPSED_WIDTH = 96;
 
 const menuConfig = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: '数据概览', title: '数据概览' },
@@ -44,21 +47,42 @@ const menuConfig = [
 
 const MainLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const navigate = useNavigate();
     const location = useLocation();
     const { admin, clearAuth } = useAuthStore();
-    const { token } = theme.useToken();
+
+    useEffect(() => {
+        if (!isMobile) {
+            setMobileNavOpen(false);
+        }
+    }, [isMobile]);
 
     const hasSuperAdminPermission = isSuperAdmin(admin?.role);
     const displayName = admin?.username?.trim() || 'Admin';
     const avatarText = displayName.charAt(0).toUpperCase();
-    const menuItems: MenuProps['items'] = menuConfig
-        .filter(item => !item.superAdmin || hasSuperAdminPermission)
-        .map(item => ({
-            key: item.key,
-            icon: item.icon,
-            label: <Link to={item.key}>{item.label}</Link>,
-        }));
+    const roleLabel = getAdminRoleLabel(admin?.role);
+    const mainLayoutClassName = [
+        'app-main',
+        isMobile ? 'app-main--mobile' : '',
+        !isMobile && collapsed ? 'app-main--collapsed' : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
+
+    const menuItems: MenuProps['items'] = useMemo(
+        () =>
+            menuConfig
+                .filter((item) => !item.superAdmin || hasSuperAdminPermission)
+                .map((item) => ({
+                    key: item.key,
+                    icon: item.icon,
+                    label: item.label,
+                })),
+        [hasSuperAdminPermission]
+    );
 
     const handleLogout = async () => {
         try {
@@ -68,6 +92,13 @@ const MainLayout: React.FC = () => {
         }
         clearAuth();
         navigate('/login');
+    };
+
+    const handleNavigate = (path: string) => {
+        navigate(path);
+        if (isMobile) {
+            setMobileNavOpen(false);
+        }
     };
 
     const userMenuItems: MenuProps['items'] = [
@@ -87,135 +118,123 @@ const MainLayout: React.FC = () => {
         },
     ];
 
-    const currentMenu = menuConfig.find(item => location.pathname.startsWith(item.key));
+    const currentMenu = menuConfig.find(
+        (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)
+    );
     const pageTitle = currentMenu?.title || '管理后台';
+    const selectedKeys = currentMenu ? [currentMenu.key] : [];
 
-    const selectedKeys = menuConfig
-        .filter(item => location.pathname.startsWith(item.key))
-        .map(item => item.key);
+    const renderLogo = (compact: boolean) => (
+        <div className="app-logo">
+            <div className="app-logo__inner">
+                <div className="app-logo__badge">GX</div>
+                {!compact && (
+                    <div className="app-logo__text">
+                        <div className="app-logo__title">GongXi Mail</div>
+                        <div className="app-logo__subtitle">邮箱管理控制台</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const menuNode = (
+        <Menu
+            className="app-menu"
+            theme="light"
+            mode="inline"
+            inlineCollapsed={!isMobile && collapsed}
+            selectedKeys={selectedKeys}
+            items={menuItems}
+            onClick={({ key }) => handleNavigate(String(key))}
+        />
+    );
 
     return (
-        <Layout style={{ minHeight: '100vh' }}>
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                theme="light"
-                width={208}
-                style={{
-                    overflow: 'auto',
-                    height: '100vh',
-                    position: 'fixed',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    background: '#ffffff',
-                    borderRight: '1px solid #e2e8f0',
-                }}
-            >
-                <div
-                    style={{
-                        height: 64,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderBottom: '1px solid #e2e8f0',
-                    }}
-                >
-                    <Space>
-                        <div
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                background: '#0f172a',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#fff',
-                                fontWeight: 600,
-                                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.24)',
-                            }}
-                        >
-                            GX
-                        </div>
-                        {!collapsed && (
-                            <Text strong style={{ fontSize: 16, color: '#0f172a', letterSpacing: 0.2 }}>廾匸邮箱</Text>
-                        )}
-                    </Space>
-                </div>
-                <Menu
+        <Layout className="app-shell">
+            {!isMobile && (
+                <Sider
+                    className="app-sider"
+                    trigger={null}
+                    collapsible
+                    collapsed={collapsed}
                     theme="light"
-                    mode="inline"
-                    selectedKeys={selectedKeys}
-                    items={menuItems}
-                    style={{ borderRight: 0, marginTop: 8 }}
-                />
-            </Sider>
-
-            <Layout
-                style={{
-                    marginLeft: collapsed ? 80 : 208,
-                    transition: 'margin-left 0.2s ease',
-                    background: '#f8fafc',
-                }}
-            >
-                <Header
-                    style={{
-                        padding: '0 24px',
-                        background: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid #e2e8f0',
-                        height: 56,
-                        lineHeight: '56px',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 10,
-                    }}
+                    width={DESKTOP_SIDER_WIDTH}
+                    collapsedWidth={DESKTOP_SIDER_COLLAPSED_WIDTH}
                 >
-                    <Space>
-                        <span
-                            onClick={() => setCollapsed(!collapsed)}
-                            style={{ fontSize: 16, cursor: 'pointer', color: '#334155' }}
-                        >
-                            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        </span>
-                        <Breadcrumb
-                            items={[
-                                { title: '首页' },
-                                { title: pageTitle },
-                            ]}
-                            style={{ marginLeft: 16 }}
-                        />
-                    </Space>
+                    {renderLogo(collapsed)}
+                    {menuNode}
+                    <div className="app-sider__footer">
+                        简约模式 · 响应式布局
+                        <br />
+                        GongXi Mail Console
+                    </div>
+                </Sider>
+            )}
 
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <Space style={{ cursor: 'pointer' }}>
-                            <Avatar size="small" style={{ backgroundColor: '#0f172a' }}>
-                                {avatarText}
-                            </Avatar>
-                            <Text>{displayName}</Text>
-                        </Space>
-                    </Dropdown>
+            <Layout className={mainLayoutClassName}>
+                <Header className="app-header">
+                    <div className="app-header__left">
+                        <Button
+                            type="text"
+                            className="app-header__trigger"
+                            icon={isMobile ? <MenuOutlined /> : collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={() => {
+                                if (isMobile) {
+                                    setMobileNavOpen(true);
+                                } else {
+                                    setCollapsed((prev) => !prev);
+                                }
+                            }}
+                        />
+
+                        <div className="app-header__titles">
+                            <span className="app-header__title">{pageTitle}</span>
+                            <span className="app-header__meta">
+                                <Breadcrumb
+                                    className="app-breadcrumb"
+                                    items={[
+                                        { title: <Link to="/dashboard">首页</Link> },
+                                        { title: pageTitle },
+                                    ]}
+                                />
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="app-header__right">
+                        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={["click"]}>
+                            <div className="app-user-trigger" role="button" tabIndex={0}>
+                                <Avatar size="small" className="app-user-avatar">
+                                    {avatarText}
+                                </Avatar>
+                                <div className="app-user-trigger__meta">
+                                    <span className="app-user-trigger__name">{displayName}</span>
+                                    <span className="app-user-trigger__role">{roleLabel}</span>
+                                </div>
+                            </div>
+                        </Dropdown>
+                    </div>
                 </Header>
 
-                <Content
-                    style={{
-                        margin: 24,
-                        padding: 24,
-                        background: '#fff',
-                        borderRadius: token.borderRadiusLG,
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        minHeight: 'calc(100vh - 56px - 48px)',
-                    }}
-                >
-                    <Outlet />
-                </Content>
+                <div className="app-content-shell">
+                    <Content className="app-content">
+                        <Outlet />
+                    </Content>
+                </div>
             </Layout>
+
+            <Drawer
+                className="app-mobile-drawer"
+                title={renderLogo(false)}
+                placement="left"
+                width={288}
+                open={mobileNavOpen}
+                onClose={() => setMobileNavOpen(false)}
+            >
+                {menuNode}
+                <div className="app-sider__footer">简约模式 · 移动端已适配</div>
+            </Drawer>
         </Layout>
     );
 };

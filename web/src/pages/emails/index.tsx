@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Table,
+    Card,
     Button,
     Space,
     Pagination,
@@ -36,12 +37,13 @@ import {
     EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import { emailApi, groupApi } from '../../api';
+import { PageHeader } from '../../components';
 import { getErrorMessage } from '../../utils/error';
 import { requestData } from '../../utils/request';
 import dayjs from 'dayjs';
 import './index.css';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 const { Dragger } = Upload;
 const MAIL_FETCH_STRATEGY_OPTIONS = [
@@ -192,6 +194,7 @@ const fallbackCopyText = (value: string): boolean => {
 
 const EmailsPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const useHorizontalScroll = !screens.xl;
 
     const [loading, setLoading] = useState(false);
@@ -1085,7 +1088,7 @@ const EmailsPage: React.FC = () => {
             title: '邮箱',
             dataIndex: 'email',
             key: 'email',
-            width: EMAIL_COLUMN_WIDTH,
+            width: screens.sm ? EMAIL_COLUMN_WIDTH : 220,
             className: 'emails-table__email-column',
             render: (email: string) => (
                 <button
@@ -1104,7 +1107,8 @@ const EmailsPage: React.FC = () => {
             title: '密码',
             dataIndex: 'hasPassword',
             key: 'password',
-            width: 156,
+            width: screens.sm ? 156 : 128,
+            responsive: ['sm'],
             render: (hasPassword: boolean, record: EmailAccount) => {
                 if (!hasPassword) {
                     return <Text type="secondary">-</Text>;
@@ -1116,19 +1120,7 @@ const EmailsPage: React.FC = () => {
                 const displayValue = visible ? (password || PASSWORD_MASK) : PASSWORD_MASK;
                 return (
                     <Space size={4}>
-                        <Text
-                            code
-                            style={{
-                                marginBottom: 0,
-                                display: 'inline-block',
-                                width: '100%',
-                                minWidth: 0,
-                                maxWidth: 220,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}
-                        >
+                        <Text code className="emails-table__password-text">
                             {displayValue}
                         </Text>
                         <Tooltip title={visible ? '隐藏密码' : '显示密码'}>
@@ -1223,9 +1215,9 @@ const EmailsPage: React.FC = () => {
         {
             title: '操作',
             key: 'action',
-            width: 156,
+            width: screens.sm ? 156 : 128,
             render: (_: unknown, record: EmailAccount) => (
-                <Space>
+                <Space size={isMobile ? [4, 4] : 'small'} wrap>
                     <Tooltip title="刷新 Token">
                         <Button
                             type="text"
@@ -1244,7 +1236,7 @@ const EmailsPage: React.FC = () => {
                     <Tooltip title="垃圾箱">
                         <Button
                             type="text"
-                            icon={<DeleteOutlined style={{ color: '#faad14' }} />}
+                            icon={<DeleteOutlined className="emails-table__junk-icon" />}
                             onClick={() => handleViewMails(record, 'Junk')}
                         />
                     </Tooltip>
@@ -1266,7 +1258,7 @@ const EmailsPage: React.FC = () => {
                 </Space>
             ),
         },
-    ], [handleCopyEmail, handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, passwordById, passwordLoadingIds, refreshingTokenIds, visiblePasswordIds]);
+    ], [handleCopyEmail, handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, isMobile, passwordById, passwordLoadingIds, refreshingTokenIds, screens.sm, visiblePasswordIds]);
 
     const rowSelection = useMemo(
         () => ({
@@ -1297,17 +1289,23 @@ const EmailsPage: React.FC = () => {
             current: page,
             pageSize,
             total,
-            showSizeChanger: true,
-            showTotal: (count: number) => `共 ${count} 条`,
+            simple: isMobile,
+            showLessItems: isMobile,
+            showSizeChanger: !isMobile,
+            showQuickJumper: !isMobile,
+            showTotal: isMobile ? undefined : (count: number) => `共 ${count} 条`,
             onChange: (currentPage: number, currentPageSize: number) => {
                 setPage(currentPage);
                 setPageSize(currentPageSize);
             },
         }),
-        [page, pageSize, total]
+        [isMobile, page, pageSize, total]
     );
 
-    const emailTableScroll = useMemo(() => ({ x: 'max-content' }), []);
+    const emailTableScroll = useMemo(
+        () => (isMobile ? { x: 620 } : { x: 'max-content' }),
+        [isMobile]
+    );
 
     const pagedGroups = useMemo(() => {
         const start = (groupPage - 1) * groupPageSize;
@@ -1355,6 +1353,23 @@ const EmailsPage: React.FC = () => {
                         </html>
                     `,
         [emailDetailContent]
+    );
+
+    const modalWidths = useMemo(
+        () => ({
+            emailForm: screens.lg ? 600 : screens.sm ? 560 : 'calc(100vw - 16px)',
+            import: screens.xl ? 700 : screens.md ? 640 : screens.sm ? 560 : 'calc(100vw - 16px)',
+            mailList: screens.xl ? 1000 : screens.lg ? 880 : screens.sm ? 720 : 'calc(100vw - 16px)',
+            mailDetail: screens.xl ? 900 : screens.lg ? 820 : screens.sm ? 720 : 'calc(100vw - 16px)',
+            compact: screens.sm ? 460 : 'calc(100vw - 16px)',
+            assign: screens.sm ? 400 : 'calc(100vw - 16px)',
+        }),
+        [screens.lg, screens.md, screens.sm, screens.xl]
+    );
+
+    const responsiveModalBodyStyle = useMemo(
+        () => ({ padding: screens.sm ? '16px 24px' : 14 }),
+        [screens.sm]
     );
 
     const groupFilterOptions = useMemo(
@@ -1496,141 +1511,97 @@ const EmailsPage: React.FC = () => {
     const hasGroupSelection = selectedGroupCount > 0;
 
     return (
-        <div className="emails-page">
-            <Title level={4} style={{ margin: '0 0 16px' }}>邮箱管理</Title>
+        <div className="page-stack emails-page">
+            <PageHeader
+                title="邮箱管理"
+                subtitle="统一管理邮箱账号、标签与分组，兼顾桌面与手机端的操作体验。"
+            />
             <Tabs
+                className="emails-page__tabs"
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as 'emails' | 'tags' | 'groups')}
                 animated={false}
                 destroyInactiveTabPane
-                tabBarExtraContent={
-                    activeTab === 'emails' ? (
-                        <Space wrap className="emails-page__toolbar">
-                            <Button
-                                key="refresh-all"
-                                icon={<SyncOutlined spin={batchRefreshing} />}
-                                onClick={handleBatchRefreshTokens}
-                                loading={batchRefreshing}
-                            >
-                                刷新全部 Token
-                            </Button>
-                            <Button key="import" icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
-                                导入
-                            </Button>
-                            <Button key="export" icon={<DownloadOutlined />} onClick={handleExport}>
-                                导出
-                            </Button>
-                            <div className={`emails-page__toolbar-batch${hasSelection ? ' is-active' : ''}`}>
-                                <Space wrap size={8}>
-                                    <Button
-                                        key="assign-group"
-                                        className="emails-page__toolbar-neutral"
-                                        icon={<GroupOutlined />}
-                                        onClick={() => setAssignGroupModalVisible(true)}
-                                    >
-                                        分配分组 ({selectedCount})
-                                    </Button>
-                                    <Button
-                                        key="remove-group"
-                                        className="emails-page__toolbar-neutral"
-                                        onClick={handleBatchRemoveGroup}
-                                    >
-                                        移出分组 ({selectedCount})
-                                    </Button>
-                                    <Popconfirm
-                                        title={`确定要删除选中的 ${selectedCount} 个邮箱吗？`}
-                                        onConfirm={handleBatchDelete}
-                                    >
-                                        <Button key="batch-delete" danger className="emails-page__toolbar-neutral">
-                                            批量删除 ({selectedCount})
-                                        </Button>
-                                    </Popconfirm>
-                                </Space>
-                            </div>
-                            <Button
-                                key="create-email"
-                                type="primary"
-                                className="emails-page__toolbar-primary"
-                                icon={<PlusOutlined />}
-                                onClick={handleCreate}
-                            >
-                                添加邮箱
-                            </Button>
-                        </Space>
-                    ) : activeTab === 'tags' ? (
-                        <Space wrap className="emails-page__toolbar">
-                            {hasTagSelection ? (
-                                <Popconfirm
-                                    title={`确定要删除选中的 ${selectedTagCount} 个标签吗？`}
-                                    onConfirm={handleBatchDeleteTags}
-                                >
-                                    <Button danger loading={batchDeleteTagLoading}>
-                                        批量删除 ({selectedTagCount})
-                                    </Button>
-                                </Popconfirm>
-                            ) : (
-                                <Button danger disabled>
-                                    批量删除 (0)
-                                </Button>
-                            )}
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={handleCreateTag}
-                            >
-                                创建标签
-                            </Button>
-                        </Space>
-                    ) : activeTab === 'groups' ? (
-                        <Space wrap className="emails-page__toolbar">
-                            {hasGroupSelection ? (
-                                <Popconfirm
-                                    title={`确定要删除选中的 ${selectedGroupCount} 个分组吗？`}
-                                    onConfirm={handleBatchDeleteGroups}
-                                >
-                                    <Button danger loading={batchDeleteGroupLoading}>
-                                        批量删除 ({selectedGroupCount})
-                                    </Button>
-                                </Popconfirm>
-                            ) : (
-                                <Button danger disabled>
-                                    批量删除 (0)
-                                </Button>
-                            )}
-                            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
-                                创建分组
-                            </Button>
-                        </Space>
-                    ) : undefined
-                }
                 items={[
                     {
                         key: 'emails',
                         label: '邮箱列表',
                         children: (
-                            <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-                                    <Space wrap>
+                            <div className="page-stack emails-page__panel">
+                                <div className="page-toolbar emails-page__toolbar">
+                                    <div className="page-toolbar__group">
+                                        <Button
+                                            icon={<SyncOutlined spin={batchRefreshing} />}
+                                            onClick={handleBatchRefreshTokens}
+                                            loading={batchRefreshing}
+                                        >
+                                            刷新全部 Token
+                                        </Button>
+                                        <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>
+                                            导入
+                                        </Button>
+                                        <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                                            导出
+                                        </Button>
+                                    </div>
+                                    <div className="page-toolbar__group">
+                                        <Button
+                                            className="emails-page__toolbar-neutral"
+                                            icon={<GroupOutlined />}
+                                            onClick={() => setAssignGroupModalVisible(true)}
+                                            disabled={!hasSelection}
+                                        >
+                                            分配分组 ({selectedCount})
+                                        </Button>
+                                        <Button
+                                            className="emails-page__toolbar-neutral"
+                                            onClick={handleBatchRemoveGroup}
+                                            disabled={!hasSelection}
+                                        >
+                                            移出分组 ({selectedCount})
+                                        </Button>
+                                        <Popconfirm
+                                            title={`确定要删除选中的 ${selectedCount} 个邮箱吗？`}
+                                            onConfirm={handleBatchDelete}
+                                            disabled={!hasSelection}
+                                        >
+                                            <Button danger className="emails-page__toolbar-neutral" disabled={!hasSelection}>
+                                                批量删除 ({selectedCount})
+                                            </Button>
+                                        </Popconfirm>
+                                        <Button
+                                            type="primary"
+                                            className="emails-page__toolbar-primary"
+                                            icon={<PlusOutlined />}
+                                            onClick={handleCreate}
+                                        >
+                                            添加邮箱
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="page-filter-row emails-page__filters">
+                                    <div className="page-filter-row__group">
                                         <Input
+                                            className="emails-page__filter-control"
                                             placeholder="搜索邮箱"
                                             prefix={<SearchOutlined />}
                                             value={keyword}
                                             onChange={(e) => setKeyword(e.target.value)}
-                                            style={{ width: 200 }}
                                             allowClear
                                         />
                                         <Input
+                                            className="emails-page__filter-control"
                                             placeholder="按标签搜索（子串）"
                                             prefix={<SearchOutlined />}
                                             value={tagKeyword}
                                             onChange={(e) => setTagKeyword(e.target.value)}
-                                            style={{ width: 220 }}
                                             allowClear
                                         />
                                         <Select
+                                            className="emails-page__filter-control emails-page__filter-control--sm"
                                             placeholder="按分组筛选"
                                             allowClear
-                                            style={{ width: 160 }}
                                             value={filterGroupId}
                                             options={groupFilterOptions}
                                             onChange={(val: number | string | undefined) => {
@@ -1638,108 +1609,184 @@ const EmailsPage: React.FC = () => {
                                                 setPage(1);
                                             }}
                                         />
-                                    </Space>
-                                    <Pagination
-                                        current={tablePagination.current}
-                                        pageSize={tablePagination.pageSize}
-                                        total={tablePagination.total}
-                                        showSizeChanger={tablePagination.showSizeChanger}
-                                        showTotal={tablePagination.showTotal}
-                                        onChange={tablePagination.onChange}
-                                    />
+                                    </div>
+                                    <div className="page-filter-row__group emails-page__pagination-group">
+                                        <Pagination
+                                            current={tablePagination.current}
+                                            pageSize={tablePagination.pageSize}
+                                            total={tablePagination.total}
+                                            simple={tablePagination.simple}
+                                            showLessItems={tablePagination.showLessItems}
+                                            showSizeChanger={tablePagination.showSizeChanger}
+                                            showQuickJumper={tablePagination.showQuickJumper}
+                                            showTotal={tablePagination.showTotal}
+                                            onChange={tablePagination.onChange}
+                                        />
+                                    </div>
                                 </div>
 
-                                <Table
-                                    className="emails-table"
-                                    columns={columns}
-                                    dataSource={data}
-                                    rowKey="id"
-                                    loading={loading}
-                                    rowSelection={rowSelection}
-                                    pagination={false}
-                                    scroll={emailTableScroll}
-                                    tableLayout="fixed"
-                                    sticky={{ offsetHeader: EMAIL_TABLE_STICKY_OFFSET }}
-                                />
-                            </>
+                                <Card bordered={false} className="page-card page-card--table emails-page__table-card">
+                                    <Table
+                                        className="emails-table"
+                                        columns={columns}
+                                        dataSource={data}
+                                        rowKey="id"
+                                        size={isMobile ? 'small' : 'middle'}
+                                        loading={loading}
+                                        rowSelection={rowSelection}
+                                        pagination={false}
+                                        scroll={emailTableScroll}
+                                        tableLayout={isMobile ? 'auto' : 'fixed'}
+                                        sticky={isMobile ? false : { offsetHeader: EMAIL_TABLE_STICKY_OFFSET }}
+                                    />
+                                </Card>
+                            </div>
                         ),
                     },
                     {
                         key: 'tags',
                         label: '邮箱标签',
                         children: (
-                            <>
-                                <div className="emails-page__tag-toolbar">
-                                    <Input
-                                        placeholder="搜索标签（支持子串）"
-                                        prefix={<SearchOutlined />}
-                                        value={tagManageKeyword}
-                                        onChange={(e) => setTagManageKeyword(e.target.value)}
-                                        style={{ width: 280 }}
-                                        allowClear
-                                    />
-                                    <Pagination
-                                        current={tagPage}
-                                        pageSize={tagPageSize}
-                                        total={tagTotal}
-                                        showSizeChanger
-                                        showTotal={(count: number) => `共 ${count} 条`}
-                                        onChange={(currentPage: number, currentPageSize: number) => {
-                                            setTagPage(currentPage);
-                                            setTagPageSize(currentPageSize);
-                                        }}
-                                    />
+                            <div className="page-stack emails-page__panel">
+                                <div className="page-toolbar emails-page__toolbar">
+                                    <div className="page-toolbar__group">
+                                        {hasTagSelection ? (
+                                            <Popconfirm
+                                                title={`确定要删除选中的 ${selectedTagCount} 个标签吗？`}
+                                                onConfirm={handleBatchDeleteTags}
+                                            >
+                                                <Button danger loading={batchDeleteTagLoading}>
+                                                    批量删除 ({selectedTagCount})
+                                                </Button>
+                                            </Popconfirm>
+                                        ) : (
+                                            <Button danger disabled>
+                                                批量删除 (0)
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="page-toolbar__group">
+                                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateTag}>
+                                            创建标签
+                                        </Button>
+                                    </div>
                                 </div>
-                                <Table
-                                    className="email-tags-table"
-                                    columns={tagColumns}
-                                    dataSource={tagItems}
-                                    rowKey="id"
-                                    loading={tagListLoading}
-                                    rowSelection={tagRowSelection}
-                                    pagination={false}
-                                    scroll={useHorizontalScroll ? { x: 760 } : undefined}
-                                />
-                            </>
+
+                                <div className="page-filter-row emails-page__filters">
+                                    <div className="page-filter-row__group">
+                                        <Input
+                                            className="emails-page__filter-control"
+                                            placeholder="搜索标签（支持子串）"
+                                            prefix={<SearchOutlined />}
+                                            value={tagManageKeyword}
+                                            onChange={(e) => setTagManageKeyword(e.target.value)}
+                                            allowClear
+                                        />
+                                    </div>
+                                    <div className="page-filter-row__group emails-page__pagination-group">
+                                        <Pagination
+                                            current={tagPage}
+                                            pageSize={tagPageSize}
+                                            total={tagTotal}
+                                            simple={isMobile}
+                                            showLessItems={isMobile}
+                                            showSizeChanger={!isMobile}
+                                            showTotal={isMobile ? undefined : (count: number) => `共 ${count} 条`}
+                                            onChange={(currentPage: number, currentPageSize: number) => {
+                                                setTagPage(currentPage);
+                                                setTagPageSize(currentPageSize);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <Card bordered={false} className="page-card page-card--table emails-page__table-card">
+                                    <Table
+                                        className="email-tags-table"
+                                        columns={tagColumns}
+                                        dataSource={tagItems}
+                                        rowKey="id"
+                                        size={isMobile ? 'small' : 'middle'}
+                                        loading={tagListLoading}
+                                        rowSelection={tagRowSelection}
+                                        pagination={false}
+                                        scroll={useHorizontalScroll ? { x: 760 } : undefined}
+                                    />
+                                </Card>
+                            </div>
                         ),
                     },
                     {
                         key: 'groups',
                         label: '邮箱分组',
                         children: (
-                            <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
-                                    <Input
-                                        placeholder="搜索分组名称/描述"
-                                        prefix={<SearchOutlined />}
-                                        value={groupKeyword}
-                                        onChange={(e) => setGroupKeyword(e.target.value)}
-                                        style={{ width: 280 }}
-                                        allowClear
-                                    />
-                                    <Pagination
-                                        current={groupPage}
-                                        pageSize={groupPageSize}
-                                        total={groupItems.length}
-                                        showSizeChanger
-                                        showTotal={(count: number) => `共 ${count} 条`}
-                                        onChange={(currentPage: number, currentPageSize: number) => {
-                                            setGroupPage(currentPage);
-                                            setGroupPageSize(currentPageSize);
-                                        }}
-                                    />
+                            <div className="page-stack emails-page__panel">
+                                <div className="page-toolbar emails-page__toolbar">
+                                    <div className="page-toolbar__group">
+                                        {hasGroupSelection ? (
+                                            <Popconfirm
+                                                title={`确定要删除选中的 ${selectedGroupCount} 个分组吗？`}
+                                                onConfirm={handleBatchDeleteGroups}
+                                            >
+                                                <Button danger loading={batchDeleteGroupLoading}>
+                                                    批量删除 ({selectedGroupCount})
+                                                </Button>
+                                            </Popconfirm>
+                                        ) : (
+                                            <Button danger disabled>
+                                                批量删除 (0)
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="page-toolbar__group">
+                                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateGroup}>
+                                            创建分组
+                                        </Button>
+                                    </div>
                                 </div>
-                                <Table
-                                    className="email-groups-table"
-                                    columns={groupColumns}
-                                    dataSource={pagedGroups}
-                                    rowKey="id"
-                                    loading={groupListLoading}
-                                    rowSelection={groupRowSelection}
-                                    pagination={false}
-                                    scroll={useHorizontalScroll ? { x: 760 } : undefined}
-                                />
-                            </>
+
+                                <div className="page-filter-row emails-page__filters">
+                                    <div className="page-filter-row__group">
+                                        <Input
+                                            className="emails-page__filter-control"
+                                            placeholder="搜索分组名称/描述"
+                                            prefix={<SearchOutlined />}
+                                            value={groupKeyword}
+                                            onChange={(e) => setGroupKeyword(e.target.value)}
+                                            allowClear
+                                        />
+                                    </div>
+                                    <div className="page-filter-row__group emails-page__pagination-group">
+                                        <Pagination
+                                            current={groupPage}
+                                            pageSize={groupPageSize}
+                                            total={groupItems.length}
+                                            simple={isMobile}
+                                            showLessItems={isMobile}
+                                            showSizeChanger={!isMobile}
+                                            showTotal={isMobile ? undefined : (count: number) => `共 ${count} 条`}
+                                            onChange={(currentPage: number, currentPageSize: number) => {
+                                                setGroupPage(currentPage);
+                                                setGroupPageSize(currentPageSize);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <Card bordered={false} className="page-card page-card--table emails-page__table-card">
+                                    <Table
+                                        className="email-groups-table"
+                                        columns={groupColumns}
+                                        dataSource={pagedGroups}
+                                        rowKey="id"
+                                        size={isMobile ? 'small' : 'middle'}
+                                        loading={groupListLoading}
+                                        rowSelection={groupRowSelection}
+                                        pagination={false}
+                                        scroll={useHorizontalScroll ? { x: 760 } : undefined}
+                                    />
+                                </Card>
+                            </div>
                         ),
                     },
                 ]}
@@ -1752,7 +1799,8 @@ const EmailsPage: React.FC = () => {
                 onOk={handleSubmit}
                 onCancel={() => setModalVisible(false)}
                 destroyOnClose
-                width={600}
+                width={modalWidths.emailForm}
+                styles={{ body: responsiveModalBodyStyle }}
             >
                 <Spin spinning={emailEditLoading}>
                     <Form form={form} layout="vertical">
@@ -1805,9 +1853,10 @@ const EmailsPage: React.FC = () => {
                 onOk={handleImport}
                 onCancel={() => setImportModalVisible(false)}
                 destroyOnClose
-                width={700}
+                width={modalWidths.import}
+                styles={{ body: responsiveModalBodyStyle }}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space direction="vertical" className="emails-page__modal-stack" size="middle">
                     <div>
                         <Text type="secondary">
                             上传文件或粘贴内容。系统会自动清洗空白/说明行并自动识别分隔符（识别失败时回退到你填写的分隔符）。
@@ -1822,18 +1871,18 @@ const EmailsPage: React.FC = () => {
                         </Text>
                     </div>
                     <Input
+                        className="emails-page__modal-control emails-page__modal-control--sm"
                         addonBefore="分隔符"
                         value={separator}
                         onChange={(e) => setSeparator(e.target.value)}
-                        style={{ width: 200 }}
                     />
                     <Select
+                        className="emails-page__modal-control emails-page__modal-control--md"
                         placeholder="导入到分组（可选）"
                         allowClear
                         value={importGroupId}
                         options={groupOptions}
                         onChange={(value: number | string | undefined) => setImportGroupId(toOptionalNumber(value))}
-                        style={{ width: 260 }}
                     />
                     <Dragger
                         beforeUpload={(file) => {
@@ -1861,6 +1910,7 @@ const EmailsPage: React.FC = () => {
                         <p className="ant-upload-hint">支持 .txt 或 .csv 文件</p>
                     </Dragger>
                     <TextArea
+                        className="emails-page__modal-control"
                         rows={12}
                         value={importContent}
                         onChange={(e) => setImportContent(e.target.value)}
@@ -1881,8 +1931,10 @@ const EmailsPage: React.FC = () => {
                 okText="开始导出"
                 cancelText="取消"
                 destroyOnClose
+                width={modalWidths.compact}
+                styles={{ body: responsiveModalBodyStyle }}
             >
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space direction="vertical" size="middle" className="emails-page__modal-stack">
                     <Text type="secondary">
                         默认导出格式：邮箱{separator}客户端ID{separator}刷新令牌
                         <br />
@@ -1905,10 +1957,10 @@ const EmailsPage: React.FC = () => {
                     onCancel={() => setMailModalVisible(false)}
                     footer={null}
                     destroyOnClose
-                    width={1000}
-                    styles={{ body: { padding: '16px 24px' } }}
+                    width={modalWidths.mailList}
+                    styles={{ body: responsiveModalBodyStyle }}
                 >
-                    <Space style={{ marginBottom: 16 }}>
+                    <div className="emails-page__mail-toolbar">
                         <Button type="primary" onClick={handleRefreshMails} loading={mailLoading}>
                             收取新邮件
                         </Button>
@@ -1918,22 +1970,23 @@ const EmailsPage: React.FC = () => {
                         >
                             <Button danger>清空</Button>
                         </Popconfirm>
-                        <span style={{ marginLeft: 16, color: '#888' }}>
+                        <span className="emails-page__mail-count">
                             共 {mailList.length} 封邮件
                         </span>
-                    </Space>
+                    </div>
                     <List
+                        className="emails-page__mail-list"
                         loading={mailLoading}
                         dataSource={mailList}
                         itemLayout="horizontal"
                         pagination={{
                             pageSize: 10,
-                            showSizeChanger: true,
-                            showQuickJumper: true,
-                            showTotal: (total: number) => `共 ${total} 条`,
-                            style: { marginTop: 16 },
+                            simple: isMobile,
+                            showLessItems: isMobile,
+                            showSizeChanger: !isMobile,
+                            showQuickJumper: !isMobile,
+                            showTotal: isMobile ? undefined : (total: number) => `共 ${total} 条`,
                         }}
-                        style={{ maxHeight: 450, overflow: 'auto' }}
                         renderItem={(item: MailItem) => (
                             <List.Item
                                 key={item.id}
@@ -1949,17 +2002,17 @@ const EmailsPage: React.FC = () => {
                             >
                                 <List.Item.Meta
                                     title={
-                                        <Typography.Text ellipsis style={{ maxWidth: 600 }}>
+                                        <Typography.Text ellipsis className="emails-page__mail-subject">
                                             {item.subject || '(无主题)'}
                                         </Typography.Text>
                                     }
                                     description={
-                                        <Space size="large">
-                                            <span style={{ color: '#1890ff' }}>{item.from || '未知发件人'}</span>
-                                            <span style={{ color: '#999' }}>
+                                        <div className="emails-page__mail-meta">
+                                            <span className="emails-page__mail-from">{item.from || '未知发件人'}</span>
+                                            <span className="emails-page__mail-date">
                                                 {item.date ? dayjs(item.date).format('YYYY-MM-DD HH:mm') : '-'}
                                             </span>
-                                        </Space>
+                                        </div>
                                     }
                                 />
                             </List.Item>
@@ -1976,20 +2029,14 @@ const EmailsPage: React.FC = () => {
                     onCancel={() => setEmailDetailVisible(false)}
                     footer={null}
                     destroyOnClose
-                    width={900}
-                    styles={{ body: { padding: '16px 24px' } }}
+                    width={modalWidths.mailDetail}
+                    styles={{ body: responsiveModalBodyStyle }}
                 >
                     <iframe
+                        className="emails-page__iframe"
                         title="email-content"
                         sandbox="allow-same-origin"
                         srcDoc={emailDetailSrcDoc}
-                        style={{
-                            width: '100%',
-                            height: 'calc(100vh - 300px)',
-                            border: '1px solid #eee',
-                            borderRadius: '8px',
-                            backgroundColor: '#fafafa',
-                        }}
                     />
                 </Modal>
             )}
@@ -2003,7 +2050,8 @@ const EmailsPage: React.FC = () => {
                 confirmLoading={groupSubmitting}
                 okText={editingGroupId ? '保存' : '创建'}
                 destroyOnClose
-                width={460}
+                width={modalWidths.compact}
+                styles={{ body: responsiveModalBodyStyle }}
             >
                 <Form form={groupForm} layout="vertical">
                     {editingGroupId ? (
@@ -2045,7 +2093,8 @@ const EmailsPage: React.FC = () => {
                 confirmLoading={tagSubmitting}
                 okText={editingTagId ? '保存' : '创建'}
                 destroyOnClose
-                width={460}
+                width={modalWidths.compact}
+                styles={{ body: responsiveModalBodyStyle }}
             >
                 <Form form={tagForm} layout="vertical">
                     {editingTagId ? (
@@ -2078,12 +2127,13 @@ const EmailsPage: React.FC = () => {
                 onOk={handleBatchAssignGroup}
                 onCancel={() => setAssignGroupModalVisible(false)}
                 destroyOnClose
-                width={400}
+                width={modalWidths.assign}
+                styles={{ body: responsiveModalBodyStyle }}
             >
-                <p>已选择 {selectedRowKeys.length} 个邮箱</p>
+                <p className="emails-page__assign-note">已选择 {selectedRowKeys.length} 个邮箱</p>
                 <Select
+                    className="emails-page__modal-control"
                     placeholder="选择目标分组"
-                    style={{ width: '100%' }}
                     value={assignTargetGroupId}
                     options={groupOptions}
                     onChange={setAssignTargetGroupId}

@@ -24,6 +24,7 @@ import {
     Checkbox,
     Spin,
     Empty,
+    Grid,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -36,12 +37,14 @@ import {
     SearchOutlined,
 } from '@ant-design/icons';
 import { apiKeyApi, groupApi, emailApi } from '../../api';
+import { PageHeader } from '../../components';
 import { getErrorMessage } from '../../utils/error';
 import { requestData } from '../../utils/request';
 import { LOG_ACTION_OPTIONS } from '../../constants/logActions';
 import dayjs from 'dayjs';
+import './index.css';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface EmailGroup {
     id: number;
@@ -95,7 +98,11 @@ interface ApiKeyListResult {
     total: number;
 }
 
+const API_KEY_TABLE_STICKY_OFFSET = 56;
+
 const ApiKeysPage: React.FC = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ApiKey[]>([]);
     const [total, setTotal] = useState(0);
@@ -125,6 +132,21 @@ const ApiKeysPage: React.FC = () => {
     const [form] = Form.useForm();
     const selectedAllowedGroupIds = Form.useWatch('allowedGroupIds', form) as number[] | undefined;
     const selectedAllowedEmailIds = Form.useWatch('allowedEmailIds', form) as number[] | undefined;
+
+    const modalWidths = useMemo(
+        () => ({
+            form: screens.xl ? 760 : screens.lg ? 700 : screens.sm ? 620 : 'calc(100vw - 16px)',
+            keyResult: screens.sm ? 540 : 'calc(100vw - 16px)',
+            pool: screens.lg ? 600 : screens.sm ? 520 : 'calc(100vw - 16px)',
+            emailPool: screens.xl ? 760 : screens.lg ? 700 : screens.sm ? 620 : 'calc(100vw - 16px)',
+        }),
+        [screens.lg, screens.md, screens.sm, screens.xl]
+    );
+
+    const responsiveModalBodyStyle = useMemo(
+        () => ({ padding: screens.sm ? '16px 24px' : 14 }),
+        [screens.sm]
+    );
 
     const permissionActionOptions = useMemo(
         () =>
@@ -437,33 +459,42 @@ const ApiKeysPage: React.FC = () => {
             title: '名称',
             dataIndex: 'name',
             key: 'name',
-            render: (name, record) => (
-                <Space>
-                    <Text strong>{name}</Text>
-                    {record.status === 'DISABLED' && <Badge status="error" />}
-                </Space>
+            width: screens.md ? 220 : 180,
+            render: (name: string, record: ApiKey) => (
+                <div className="api-keys-page__name-cell">
+                    <Space size={[8, 4]} wrap className="api-keys-page__name-title">
+                        <Text strong>{name}</Text>
+                        {record.status === 'DISABLED' && <Badge status="error" />}
+                    </Space>
+                    {!screens.md && (
+                        <Text code className="api-keys-page__name-prefix">
+                            {record.keyPrefix}...
+                        </Text>
+                    )}
+                </div>
             ),
         },
         {
             title: 'Key 前缀',
             dataIndex: 'keyPrefix',
             key: 'keyPrefix',
-            width: 120,
-            render: (text) => <Text code>{text}...</Text>,
+            width: 128,
+            responsive: ['md'],
+            render: (text: string) => <Text code className="api-keys-page__key-prefix">{text}...</Text>,
         },
         {
             title: '速率限制',
             dataIndex: 'rateLimit',
             key: 'rateLimit',
-            width: 100,
-            render: (val) => <Tag color="blue">{val}/分钟</Tag>,
+            width: screens.sm ? 108 : 92,
+            render: (val: number) => <Tag color="blue">{val}/分钟</Tag>,
         },
         {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
             width: 80,
-            render: (status) => (
+            render: (status: ApiKey['status']) => (
                 <Tag color={status === 'ACTIVE' ? 'green' : 'red'}>
                     {status === 'ACTIVE' ? '启用' : '禁用'}
                 </Tag>
@@ -474,14 +505,16 @@ const ApiKeysPage: React.FC = () => {
             dataIndex: 'usageCount',
             key: 'usageCount',
             width: 100,
-            render: (val) => <Text type="secondary">{val?.toLocaleString() || 0}</Text>,
+            responsive: ['lg'],
+            render: (val: number) => <Text type="secondary">{val?.toLocaleString() || 0}</Text>,
         },
         {
             title: '过期时间',
             dataIndex: 'expiresAt',
             key: 'expiresAt',
             width: 120,
-            render: (val) => {
+            responsive: ['lg'],
+            render: (val: string | null) => {
                 if (!val) return <Text type="secondary">永不过期</Text>;
                 const isExpired = dayjs(val).isBefore(dayjs());
                 return (
@@ -495,15 +528,16 @@ const ApiKeysPage: React.FC = () => {
             title: '最后使用',
             dataIndex: 'lastUsedAt',
             key: 'lastUsedAt',
-            width: 140,
-            render: (val) => val ? dayjs(val).format('MM-DD HH:mm') : <Text type="secondary">从未使用</Text>,
+            width: 124,
+            responsive: ['xl'],
+            render: (val: string | null) => val ? dayjs(val).format('MM-DD HH:mm') : <Text type="secondary">从未使用</Text>,
         },
         {
             title: '操作',
             key: 'action',
-            width: 180,
-            render: (_, record) => (
-                <Space size="small">
+            width: screens.sm ? 180 : 132,
+            render: (_: unknown, record: ApiKey) => (
+                <Space size={isMobile ? [4, 4] : 'small'} wrap>
                     <Tooltip title="邮箱池">
                         <Button
                             type="text"
@@ -536,22 +570,29 @@ const ApiKeysPage: React.FC = () => {
                 </Space>
             ),
         },
-    ], [handleDelete, handleEdit, handleManageEmails, handleViewPool]);
+    ], [handleDelete, handleEdit, handleManageEmails, handleViewPool, isMobile, screens.md, screens.sm]);
 
     const tablePagination = useMemo(
         () => ({
             current: page,
             pageSize,
             total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (count: number) => `共 ${count} 条`,
+            simple: isMobile,
+            showLessItems: isMobile,
+            showSizeChanger: !isMobile,
+            showQuickJumper: !isMobile,
+            showTotal: isMobile ? undefined : (count: number) => `共 ${count} 条`,
             onChange: (currentPage: number, currentPageSize: number) => {
                 setPage(currentPage);
                 setPageSize(currentPageSize);
             },
         }),
-        [page, pageSize, total]
+        [isMobile, page, pageSize, total]
+    );
+
+    const apiKeyTableScroll = useMemo(
+        () => (isMobile ? { x: 720 } : { x: 'max-content', y: 560 }),
+        [isMobile]
     );
 
     const poolGroupOptions = useMemo(
@@ -647,30 +688,41 @@ const ApiKeysPage: React.FC = () => {
     );
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Title level={4} style={{ margin: 0 }}>
-                    API Key 管理
-                </Title>
-                <Space>
+        <div className="page-stack api-keys-page">
+            <PageHeader
+                title="API Key 管理"
+                subtitle="统一管理访问密钥、接口权限与邮箱池分配规则。"
+            />
+
+            <div className="page-toolbar api-keys-page__toolbar">
+                <div className="page-toolbar__group">
+                    <Text type="secondary" className="api-keys-page__toolbar-summary">当前共 {total} 个 API Key</Text>
+                </div>
+                <div className="page-toolbar__group">
                     <Button icon={<ReloadOutlined />} onClick={fetchData}>
                         刷新
                     </Button>
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                         创建 API Key
                     </Button>
-                </Space>
+                </div>
             </div>
 
-            <Table
-                columns={columns}
-                dataSource={data}
-                rowKey="id"
-                loading={loading}
-                pagination={tablePagination}
-                virtual
-                scroll={{ y: 560, x: 1200 }}
-            />
+            <Card bordered={false} className="page-card page-card--table api-keys-page__table-card">
+                <Table
+                    className="api-keys-page__table"
+                    columns={columns}
+                    dataSource={data}
+                    rowKey="id"
+                    size={isMobile ? 'small' : 'middle'}
+                    loading={loading}
+                    pagination={tablePagination}
+                    virtual={!isMobile}
+                    scroll={apiKeyTableScroll}
+                    tableLayout={isMobile ? 'auto' : 'fixed'}
+                    sticky={isMobile ? false : { offsetHeader: API_KEY_TABLE_STICKY_OFFSET }}
+                />
+            </Card>
 
             {/* 创建/编辑弹窗 */}
             <Modal
@@ -682,7 +734,8 @@ const ApiKeysPage: React.FC = () => {
                     setModalVisible(false);
                 }}
                 destroyOnClose
-                width={640}
+                width={modalWidths.form}
+                styles={{ body: responsiveModalBodyStyle }}
             >
                 <Spin spinning={apiKeyDetailLoading}>
                 <Form form={form} layout="vertical">
@@ -698,14 +751,14 @@ const ApiKeysPage: React.FC = () => {
                         label="速率限制（每分钟请求数）"
                         initialValue={60}
                     >
-                        <InputNumber min={1} max={10000} style={{ width: '100%' }} />
+                        <InputNumber min={1} max={10000} className="api-keys-page__modal-control" />
                     </Form.Item>
                     <Form.Item
                         name="expiresAt"
                         label="过期时间（可选）"
                     >
                         <DatePicker
-                            style={{ width: '100%' }}
+                            className="api-keys-page__modal-control"
                             placeholder="不设置则永不过期"
                             disabledDate={(current) => current && current < dayjs().startOf('day')}
                         />
@@ -728,7 +781,7 @@ const ApiKeysPage: React.FC = () => {
                     >
                         <Checkbox.Group
                             options={permissionActionOptions}
-                            style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', rowGap: 8 }}
+                            className="api-keys-page__permissions"
                         />
                     </Form.Item>
                     <Form.Item
@@ -737,12 +790,13 @@ const ApiKeysPage: React.FC = () => {
                         tooltip="不选择表示不限制分组"
                     >
                         <Select
+                            className="api-keys-page__modal-control"
                             mode="multiple"
                             allowClear
                             placeholder="默认：全部分组"
                             options={emailGroupOptions}
                             optionFilterProp="label"
-                            maxTagCount="responsive"
+                            maxTagCount={isMobile ? 1 : 'responsive'}
                             notFoundContent="暂无分组，留空表示全部邮箱"
                         />
                     </Form.Item>
@@ -750,69 +804,65 @@ const ApiKeysPage: React.FC = () => {
                         label="可用邮箱（可选）"
                         tooltip="不选择表示使用分组范围内全部邮箱"
                     >
-                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        <div className="api-keys-page__modal-stack">
                             <Input
+                                className="api-keys-page__modal-control"
                                 allowClear
                                 value={allowedEmailKeyword}
                                 onChange={(event) => setAllowedEmailKeyword(event.target.value)}
                                 prefix={<SearchOutlined />}
                                 placeholder="搜索邮箱或分组"
                             />
-                            <Space wrap size={[8, 8]}>
-                                <Button
-                                    size="small"
-                                    disabled={filteredAllowedEmails.length === 0}
-                                    onClick={() => {
-                                        const merged = new Set((selectedAllowedEmailIds || []).map((item) => Number(item)));
-                                        filteredAllowedEmails.forEach((item) => merged.add(item.id));
-                                        form.setFieldValue('allowedEmailIds', Array.from(merged));
-                                    }}
-                                >
-                                    全选当前结果
-                                </Button>
-                                <Button
-                                    size="small"
-                                    disabled={(selectedAllowedEmailIds || []).length === 0}
-                                    onClick={() => {
-                                        form.setFieldValue(
-                                            'allowedEmailIds',
-                                            (selectedAllowedEmailIds || []).filter((id) => !filteredAllowedEmailIdSet.has(id))
-                                        );
-                                    }}
-                                >
-                                    清空当前结果
-                                </Button>
-                                <Text type="secondary">
-                                    当前可选邮箱：{scopedAllowedEmails.length}
-                                </Text>
-                                <Text type="secondary">
-                                    已选择 {selectedAllowedEmailIds?.length || 0}
-                                    {`（当前结果 ${selectedAllowedInFilteredCount} / ${filteredAllowedEmails.length}）`}
-                                </Text>
-                            </Space>
-                            <Form.Item name="allowedEmailIds" noStyle>
-                                <Checkbox.Group style={{ width: '100%' }}>
-                                    <div
-                                        style={{
-                                            maxHeight: 260,
-                                            overflow: 'auto',
-                                            border: '1px solid #f0f0f0',
-                                            borderRadius: 6,
-                                            padding: 12,
-                                            background: '#fafafa',
+                            <div className="api-keys-page__selection-toolbar">
+                                <Space wrap size={[8, 8]} className="api-keys-page__selection-actions">
+                                    <Button
+                                        size="small"
+                                        disabled={filteredAllowedEmails.length === 0}
+                                        onClick={() => {
+                                            const merged = new Set((selectedAllowedEmailIds || []).map((item) => Number(item)));
+                                            filteredAllowedEmails.forEach((item) => merged.add(item.id));
+                                            form.setFieldValue('allowedEmailIds', Array.from(merged));
                                         }}
                                     >
+                                        全选当前结果
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        disabled={(selectedAllowedEmailIds || []).length === 0}
+                                        onClick={() => {
+                                            form.setFieldValue(
+                                                'allowedEmailIds',
+                                                (selectedAllowedEmailIds || []).filter((id) => !filteredAllowedEmailIdSet.has(id))
+                                            );
+                                        }}
+                                    >
+                                        清空当前结果
+                                    </Button>
+                                </Space>
+                                <div className="api-keys-page__selection-summary">
+                                    <Text type="secondary">
+                                        当前可选邮箱：{scopedAllowedEmails.length}
+                                    </Text>
+                                    <Text type="secondary">
+                                        已选择 {selectedAllowedEmailIds?.length || 0}
+                                        {`（当前结果 ${selectedAllowedInFilteredCount} / ${filteredAllowedEmails.length}）`}
+                                    </Text>
+                                </div>
+                            </div>
+                            <Form.Item name="allowedEmailIds" noStyle>
+                                <Checkbox.Group className="api-keys-page__checkbox-group">
+                                    <div className="api-keys-page__selection-box">
                                         {filteredAllowedEmails.length > 0 ? (
                                             <Row gutter={[0, 8]}>
                                                 {filteredAllowedEmails.map((item) => (
                                                     <Col span={24} key={item.id}>
-                                                        <Checkbox value={item.id}>
-                                                            <Space size={8} wrap>
-                                                                <span>{item.email}</span>
-                                                                <Tag color={item.group ? 'blue' : 'default'}>
+                                                        <Checkbox value={item.id} className="api-keys-page__option-checkbox">
+                                                            <span className="api-keys-page__option-content">
+                                                                <span className="api-keys-page__option-label">{item.email}</span>
+                                                                <Tag color={item.group ? 'blue' : 'default'} className="api-keys-page__option-tag">
                                                                     {item.group?.name || '未分组'}
                                                                 </Tag>
-                                                            </Space>
+                                                            </span>
                                                         </Checkbox>
                                                     </Col>
                                                 ))}
@@ -835,7 +885,7 @@ const ApiKeysPage: React.FC = () => {
                             <Text type="secondary">
                                 留空表示使用{hasAllowedGroupFilter ? '所选分组' : '全部分组'}范围内全部邮箱
                             </Text>
-                        </Space>
+                        </div>
                     </Form.Item>
                 </Form>
                 </Spin>
@@ -848,14 +898,16 @@ const ApiKeysPage: React.FC = () => {
                 onOk={() => setNewKeyModalVisible(false)}
                 onCancel={() => setNewKeyModalVisible(false)}
                 destroyOnClose
+                width={modalWidths.keyResult}
+                styles={{ body: responsiveModalBodyStyle }}
                 footer={[
                     <Button key="close" onClick={() => setNewKeyModalVisible(false)}>
                         关闭
                     </Button>,
                 ]}
             >
-                <Card>
-                    <Text type="warning" style={{ display: 'block', marginBottom: 16 }}>
+                <Card bordered={false} className="page-card api-keys-page__new-key-card">
+                    <Text type="warning" className="api-keys-page__new-key-warning">
                         ⚠️ 请立即复制并妥善保存此 API Key，它不会再次显示！
                     </Text>
                     <Paragraph
@@ -864,12 +916,7 @@ const ApiKeysPage: React.FC = () => {
                             onCopy: () => message.success('已复制'),
                         }}
                         code
-                        style={{
-                            wordBreak: 'break-all',
-                            background: '#f5f5f5',
-                            padding: 12,
-                            borderRadius: 4,
-                        }}
+                        className="api-keys-page__new-key-value"
                     >
                         {newKey}
                     </Paragraph>
@@ -889,42 +936,45 @@ const ApiKeysPage: React.FC = () => {
                     onCancel={() => setPoolModalVisible(false)}
                     footer={null}
                     destroyOnClose
-                    width={500}
+                    width={modalWidths.pool}
+                    styles={{ body: responsiveModalBodyStyle }}
                 >
                     {poolLoading ? (
-                        <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
+                        <div className="api-keys-page__loading-state">加载中...</div>
                     ) : poolStats ? (
-                        <div>
-                            <div style={{ marginBottom: 16 }}>
-                                <Text type="secondary" style={{ marginRight: 8 }}>按分组筛选：</Text>
+                        <div className="page-stack api-keys-page__pool-stack">
+                            <div className="page-filter-row api-keys-page__pool-filter">
+                                <div className="page-filter-row__group">
+                                <Text type="secondary">按分组筛选：</Text>
                                 <Select
                                     allowClear
                                     placeholder="全部分组"
-                                    style={{ width: 200 }}
+                                    className="api-keys-page__filter-control"
                                     value={poolGroupName}
                                     options={poolGroupOptions}
                                     onChange={(val: string | undefined) => handlePoolGroupChange(val)}
                                 />
+                                </div>
                             </div>
-                            <Row gutter={16} style={{ marginBottom: 24 }}>
-                                <Col span={8}>
-                                    <div className="stat-blue">
+                            <Row gutter={[12, 12]}>
+                                <Col xs={24} sm={8}>
+                                    <div className="api-keys-page__stat api-keys-page__stat--blue">
                                         <Statistic
                                             title="总邮箱数"
                                             value={poolStats.total}
                                         />
                                     </div>
                                 </Col>
-                                <Col span={8}>
-                                    <div className="stat-orange">
+                                <Col xs={24} sm={8}>
+                                    <div className="api-keys-page__stat api-keys-page__stat--orange">
                                         <Statistic
                                             title="已使用"
                                             value={poolStats.used}
                                         />
                                     </div>
                                 </Col>
-                                <Col span={8}>
-                                    <div className={poolStats.remaining > 0 ? 'stat-green' : 'stat-red'}>
+                                <Col xs={24} sm={8}>
+                                    <div className={`api-keys-page__stat ${poolStats.remaining > 0 ? 'api-keys-page__stat--green' : 'api-keys-page__stat--red'}`}>
                                         <Statistic
                                             title="剩余可用"
                                             value={poolStats.remaining}
@@ -932,15 +982,8 @@ const ApiKeysPage: React.FC = () => {
                                     </div>
                                 </Col>
                             </Row>
-                            <style>{`
-                                .stat-blue .ant-statistic-content-value { color: #1890ff; }
-                                .stat-orange .ant-statistic-content-value { color: #faad14; }
-                                .stat-green .ant-statistic-content-value { color: #52c41a; }
-                                .stat-red .ant-statistic-content-value { color: #ff4d4f; }
-                            `}</style>
-
-                            <div style={{ marginBottom: 24 }}>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                            <div className="api-keys-page__progress-block">
+                                <Text type="secondary" className="api-keys-page__progress-title">
                                     使用进度
                                 </Text>
                                 <Progress
@@ -955,8 +998,8 @@ const ApiKeysPage: React.FC = () => {
 
                             <Divider />
 
-                            <div style={{ textAlign: 'center' }}>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                            <div className="api-keys-page__reset-block">
+                                <Text type="secondary" className="api-keys-page__reset-note">
                                     重置后，此 API Key 可重新使用所有邮箱
                                 </Text>
                                 <Popconfirm
@@ -975,7 +1018,7 @@ const ApiKeysPage: React.FC = () => {
                             </div>
                         </div>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                        <div className="api-keys-page__empty-state">
                             暂无数据
                         </div>
                     )}
@@ -998,43 +1041,41 @@ const ApiKeysPage: React.FC = () => {
                     cancelText="取消"
                     confirmLoading={savingEmails}
                     destroyOnClose
-                    width={600}
+                    width={modalWidths.emailPool}
+                    styles={{ body: responsiveModalBodyStyle }}
                 >
                     {emailLoading ? (
-                        <div style={{ textAlign: 'center', padding: 40 }}>
+                        <div className="api-keys-page__loading-state">
                             <Spin />
                         </div>
                     ) : (
-                        <div>
-                            <div style={{ marginBottom: 16 }}>
-                                <Space>
+                        <div className="page-stack api-keys-page__email-modal-stack">
+                            <div className="page-filter-row api-keys-page__pool-filter">
+                                <div className="page-filter-row__group">
                                     <Text type="secondary">按分组筛选：</Text>
                                     <Select
                                         allowClear
                                         placeholder="全部分组"
-                                        style={{ width: 180 }}
+                                        className="api-keys-page__filter-control"
                                         value={emailGroupId}
                                         options={emailGroupOptions}
                                         onChange={(val: number | undefined) => handleEmailGroupChange(val)}
                                     />
-                                </Space>
+                                </div>
                             </div>
-                            <div style={{ marginBottom: 16 }}>
-                                <Input
-                                    allowClear
-                                    value={emailKeyword}
-                                    onChange={(event) => setEmailKeyword(event.target.value)}
-                                    prefix={<SearchOutlined />}
-                                    placeholder="搜索邮箱或分组"
-                                />
-                            </div>
-                            <div style={{ marginBottom: 16 }}>
-                                <Text type="secondary">
-                                    勾选的邮箱表示该 API Key 已使用过（不会再自动分配）
-                                </Text>
-                            </div>
-                            <div style={{ marginBottom: 16 }}>
-                                <Space>
+                            <Input
+                                className="api-keys-page__modal-control"
+                                allowClear
+                                value={emailKeyword}
+                                onChange={(event) => setEmailKeyword(event.target.value)}
+                                prefix={<SearchOutlined />}
+                                placeholder="搜索邮箱或分组"
+                            />
+                            <Text type="secondary" className="api-keys-page__selection-hint">
+                                勾选的邮箱表示该 API Key 已使用过（不会再自动分配）
+                            </Text>
+                            <div className="api-keys-page__selection-toolbar">
+                                <Space wrap size={[8, 8]} className="api-keys-page__selection-actions">
                                     <Button
                                         size="small"
                                         onClick={() => {
@@ -1054,31 +1095,48 @@ const ApiKeysPage: React.FC = () => {
                                     >
                                         清空当前筛选
                                     </Button>
+                                </Space>
+                                <div className="api-keys-page__selection-summary">
                                     <Text type="secondary">
                                         已选择 {selectedEmails.length} / {emailList.length}
                                         {`（当前筛选 ${selectedInFilteredCount} / ${filteredEmailList.length}）`}
                                     </Text>
-                                </Space>
+                                </div>
                             </div>
-                            <div style={{ maxHeight: 400, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 4, padding: 12 }}>
-                                <Checkbox.Group
-                                    value={selectedEmails}
-                                    onChange={(vals) => setSelectedEmails(vals as number[])}
-                                    style={{ width: '100%' }}
-                                >
-                                    <Row>
-                                        {filteredEmailList.map((email: { id: number; email: string; used: boolean; groupId: number | null; groupName: string | null }) => (
-                                            <Col span={12} key={email.id} style={{ marginBottom: 8 }}>
-                                                <Checkbox value={email.id}>
-                                                    {email.email}
-                                                    {email.groupName && (
-                                                        <Tag color="blue" style={{ marginLeft: 4, fontSize: 11 }}>{email.groupName}</Tag>
-                                                    )}
-                                                </Checkbox>
-                                            </Col>
-                                        ))}
-                                    </Row>
-                                </Checkbox.Group>
+                            <div className="api-keys-page__selection-box api-keys-page__selection-box--lg">
+                                {filteredEmailList.length > 0 ? (
+                                    <Checkbox.Group
+                                        value={selectedEmails}
+                                        onChange={(vals) => setSelectedEmails(vals as number[])}
+                                        className="api-keys-page__checkbox-group"
+                                    >
+                                        <Row>
+                                            {filteredEmailList.map((email: { id: number; email: string; used: boolean; groupId: number | null; groupName: string | null }) => (
+                                                <Col xs={24} sm={12} key={email.id} className="api-keys-page__email-col">
+                                                    <Checkbox value={email.id} className="api-keys-page__option-checkbox">
+                                                        <span className="api-keys-page__option-content">
+                                                            <span className="api-keys-page__option-label">{email.email}</span>
+                                                            {email.groupName && (
+                                                                <Tag color="blue" className="api-keys-page__option-tag">{email.groupName}</Tag>
+                                                            )}
+                                                        </span>
+                                                    </Checkbox>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </Checkbox.Group>
+                                ) : (
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description={
+                                            emailGroupId
+                                                ? '当前分组下暂无邮箱'
+                                                : emailKeyword.trim()
+                                                    ? '没有匹配的邮箱'
+                                                    : '暂无可管理邮箱'
+                                        }
+                                    />
+                                )}
                             </div>
                         </div>
                     )}

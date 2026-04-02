@@ -287,7 +287,7 @@ const DashboardPage: React.FC = () => {
     };
 
     return (
-        <div>
+        <div className="page-stack dashboard-page">
             <PageHeader title="数据概览" subtitle="实时监控系统运行状态" />
 
             {/* 统计卡片 */}
@@ -329,28 +329,28 @@ const DashboardPage: React.FC = () => {
             </Row>
 
             {/* 图表区域 */}
-            <Row gutter={[16, 16]} style={{ marginTop: 16 }} ref={chartsSectionRef}>
+            <Row gutter={[16, 16]} className="dashboard-page__section" ref={chartsSectionRef}>
                 <Col xs={24} md={16}>
-                    <Card title="API 调用趋势（近7天）" bordered={false}>
+                    <Card title="API 调用趋势（近7天）" bordered={false} className="page-card dashboard-page__chart-card">
                         {!chartsReady || !chartsInView || trendLoading ? (
-                            <div style={{ textAlign: 'center', padding: 40, minHeight: 280 }}><Spin /></div>
+                            <div className="dashboard-page__loading"><Spin /></div>
                         ) : (
-                            <Suspense fallback={<div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>}>
+                            <Suspense fallback={<div className="dashboard-page__loading"><Spin /></div>}>
                                 <LineChart {...lineConfig} />
                             </Suspense>
                         )}
                     </Card>
                 </Col>
                 <Col xs={24} md={8}>
-                    <Card title="邮箱状态分布" bordered={false}>
+                    <Card title="邮箱状态分布" bordered={false} className="page-card dashboard-page__chart-card">
                         {coreLoading || !chartsReady || !chartsInView ? (
-                            <div style={{ textAlign: 'center', padding: 40, minHeight: 280 }}><Spin /></div>
+                            <div className="dashboard-page__loading"><Spin /></div>
                         ) : pieData.length > 0 ? (
-                            <Suspense fallback={<div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>}>
+                            <Suspense fallback={<div className="dashboard-page__loading"><Spin /></div>}>
                                 <PieChart {...pieConfig} />
                             </Suspense>
                         ) : (
-                            <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="dashboard-page__empty">
                                 <Text type="secondary">暂无数据</Text>
                             </div>
                         )}
@@ -359,11 +359,12 @@ const DashboardPage: React.FC = () => {
             </Row>
 
             {/* 列表区域 */}
-            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Row gutter={[16, 16]} className="dashboard-page__section">
                 <Col xs={24} md={12}>
                     <Card
                         title="最近添加的邮箱"
                         bordered={false}
+                        className="page-card page-card--table dashboard-page__table-card"
                         bodyStyle={{ padding: 0 }}
                         extra={<Link to="/emails">查看全部</Link>}
                     >
@@ -374,6 +375,7 @@ const DashboardPage: React.FC = () => {
                             loading={coreLoading}
                             pagination={false}
                             size="small"
+                            scroll={{ x: 420 }}
                             locale={{ emptyText: '暂无数据' }}
                         />
                     </Card>
@@ -382,6 +384,7 @@ const DashboardPage: React.FC = () => {
                     <Card
                         title="API Key 使用排行"
                         bordered={false}
+                        className="page-card page-card--table dashboard-page__table-card"
                         bodyStyle={{ padding: 0 }}
                         extra={<Link to="/api-keys">查看全部</Link>}
                     >
@@ -392,6 +395,7 @@ const DashboardPage: React.FC = () => {
                             loading={coreLoading}
                             pagination={false}
                             size="small"
+                            scroll={{ x: 420 }}
                             locale={{ emptyText: '暂无数据' }}
                         />
                     </Card>

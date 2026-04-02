@@ -10,24 +10,29 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       locale={zhCN}
       theme={{
+        cssVar: {
+          key: 'gongxi-mail',
+        },
+        hashed: false,
         token: {
-          colorPrimary: '#0f172a',
+          colorPrimary: '#2563eb',
           colorSuccess: '#16a34a',
           colorWarning: '#d97706',
           colorError: '#dc2626',
           colorInfo: '#2563eb',
-          borderRadius: 8,
-          borderRadiusLG: 10,
-          borderRadiusSM: 6,
+          borderRadius: 10,
+          borderRadiusLG: 16,
+          borderRadiusSM: 8,
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
           fontSize: 14,
           colorBgContainer: '#ffffff',
-          colorBgLayout: '#f8fafc',
-          colorBorder: '#e2e8f0',
+          colorBgLayout: '#f5f7fb',
+          colorBorder: '#d9e2ec',
           colorText: '#0f172a',
-          colorTextSecondary: '#475569',
-          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-          boxShadowSecondary: '0 8px 24px rgba(15, 23, 42, 0.08)',
+          colorTextSecondary: '#5b6b7f',
+          boxShadow: '0 8px 20px rgba(15, 23, 42, 0.06)',
+          boxShadowSecondary: '0 14px 32px rgba(15, 23, 42, 0.08)',
+          wireframe: false,
         },
         components: {
           Layout: {
@@ -36,28 +41,42 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             headerBg: '#ffffff',
           },
           Menu: {
-            itemBorderRadius: 8,
-            itemBg: '#ffffff',
-            itemColor: '#334155',
+            itemHeight: 42,
+            itemBorderRadius: 10,
+            itemBg: 'transparent',
+            itemColor: '#42526b',
             itemHoverColor: '#0f172a',
-            itemHoverBg: '#f8fafc',
+            itemHoverBg: '#f1f5f9',
             itemSelectedColor: '#0f172a',
-            itemSelectedBg: '#f1f5f9',
+            itemSelectedBg: '#e8f0ff',
           },
           Table: {
             headerBg: '#f8fafc',
-            headerColor: '#334155',
+            headerColor: '#42526b',
             rowHoverBg: '#f8fafc',
-            borderColor: '#e2e8f0',
+            borderColor: '#d9e2ec',
           },
           Card: {
-            paddingLG: 24,
+            headerBg: 'transparent',
+            paddingLG: 18,
           },
           Button: {
-            primaryShadow: '0 1px 2px rgba(15, 23, 42, 0.24)',
+            primaryShadow: 'none',
           },
           Input: {
-            activeShadow: '0 0 0 2px rgba(15, 23, 42, 0.12)',
+            activeShadow: '0 0 0 3px rgba(37, 99, 235, 0.14)',
+          },
+          Select: {
+            optionSelectedBg: '#edf3ff',
+          },
+          Tabs: {
+            inkBarColor: '#2563eb',
+          },
+          Modal: {
+            borderRadiusLG: 20,
+          },
+          Drawer: {
+            colorBgElevated: '#ffffff',
           },
         },
       }}
