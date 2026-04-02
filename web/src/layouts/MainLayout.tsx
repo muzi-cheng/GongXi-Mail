@@ -173,19 +173,37 @@ const MainLayout: React.FC = () => {
     const selectedKeys = currentMenu ? [currentMenu.key] : [];
     const menuItems = !isMobile && collapsed ? collapsedMenuItems : groupedMenuItems;
 
-    const renderLogo = (compact: boolean) => (
-        <div className="app-logo">
-            <div className="app-logo__inner">
-                <div className="app-logo__badge">O</div>
-                {!compact && (
-                    <div className="app-logo__text">
-                        <div className="app-logo__title">Outlook</div>
-                        <div className="app-logo__subtitle">邮箱管理控制台</div>
-                    </div>
-                )}
+    const renderLogo = (compact: boolean, onClick?: () => void) => {
+        const clickable = typeof onClick === 'function';
+
+        return (
+            <div
+                className={[
+                    'app-logo',
+                    clickable ? 'app-logo--clickable' : '',
+                ].filter(Boolean).join(' ')}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onClick={onClick}
+                onKeyDown={clickable ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onClick?.();
+                    }
+                } : undefined}
+            >
+                <div className="app-logo__inner">
+                    <div className="app-logo__badge">O</div>
+                    {!compact && (
+                        <div className="app-logo__text">
+                            <div className="app-logo__title">Outlook</div>
+                            <div className="app-logo__subtitle">邮箱管理控制台</div>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const menuNode = (
         <Menu
@@ -269,7 +287,8 @@ const MainLayout: React.FC = () => {
 
             <Drawer
                 className="app-mobile-drawer"
-                title={renderLogo(false)}
+                title={renderLogo(false, () => setMobileNavOpen(false))}
+                closable={false}
                 placement="left"
                 width={288}
                 open={mobileNavOpen}

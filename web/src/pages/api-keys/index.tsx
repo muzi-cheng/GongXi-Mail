@@ -98,8 +98,6 @@ interface ApiKeyListResult {
     total: number;
 }
 
-const API_KEY_TABLE_STICKY_OFFSET = 56;
-
 const ApiKeysPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
@@ -720,7 +718,6 @@ const ApiKeysPage: React.FC = () => {
                     virtual={!isMobile}
                     scroll={apiKeyTableScroll}
                     tableLayout={isMobile ? 'auto' : 'fixed'}
-                    sticky={isMobile ? false : { offsetHeader: API_KEY_TABLE_STICKY_OFFSET }}
                 />
             </Card>
 

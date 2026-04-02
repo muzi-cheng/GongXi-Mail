@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Grid, Input, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import type { TableColumnsType } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { PageHeader } from '../../components';
@@ -82,6 +83,8 @@ const SystemLogsPage: React.FC = () => {
     const [keyword, setKeyword] = useState('');
     const [keywordInput, setKeywordInput] = useState('');
     const [lines, setLines] = useState(200);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const renderEmpty = (value: string = '-') => <Text type="secondary">{value}</Text>;
 
     const fetchLogs = useCallback(async () => {
@@ -109,68 +112,97 @@ const SystemLogsPage: React.FC = () => {
         return () => window.clearTimeout(timer);
     }, [fetchLogs]);
 
-    const columns = [
+    const renderAction = (action: string | null) => action ? (
+        <Tooltip title={action}>
+            <Text code className="system-logs-page__action-text">{action}</Text>
+        </Tooltip>
+    ) : renderEmpty();
+
+    const renderSource = (record: SystemLogItem) => (
+        <div className="system-logs-page__source">
+            <span
+                className={[
+                    'system-logs-page__source-name',
+                    record.actorUsername ? '' : 'system-logs-page__source-name--system',
+                ].filter(Boolean).join(' ')}
+            >
+                {record.actorUsername || '系统'}
+            </span>
+            <Tag color={record.trigger === 'AUTO' ? 'blue' : record.trigger === 'MANUAL' ? 'gold' : 'default'}>
+                {getTriggerLabel(record.trigger)}
+            </Tag>
+        </div>
+    );
+
+    const columns: TableColumnsType<SystemLogItem> = [
         {
             title: '时间',
             dataIndex: 'time',
             key: 'time',
-            width: 172,
+            width: isMobile ? 156 : 172,
             render: (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'),
         },
         {
             title: '级别',
             dataIndex: 'level',
             key: 'level',
-            width: 100,
+            width: isMobile ? 92 : 100,
             render: (level: SystemLogLevel) => (
                 <Tag color={getLevelColor(level)} className={getLevelClassName(level)}>
                     {level.toUpperCase()}
                 </Tag>
             ),
         },
-        {
-            title: '操作',
-            dataIndex: 'action',
-            key: 'action',
-            width: 280,
-            render: (action: string | null) => action ? (
-                <Tooltip title={action}>
-                    <Text code className="system-logs-page__action-text">{action}</Text>
-                </Tooltip>
-            ) : renderEmpty(),
-        },
-        {
-            title: '来源',
-            key: 'source',
-            width: 176,
-            render: (_: unknown, record: SystemLogItem) => (
-                <div className="system-logs-page__source">
-                    <span
-                        className={[
-                            'system-logs-page__source-name',
-                            record.actorUsername ? '' : 'system-logs-page__source-name--system',
-                        ].filter(Boolean).join(' ')}
-                    >
-                        {record.actorUsername || '系统'}
-                    </span>
-                    <Tag color={record.trigger === 'AUTO' ? 'blue' : record.trigger === 'MANUAL' ? 'gold' : 'default'}>
-                        {getTriggerLabel(record.trigger)}
-                    </Tag>
-                </div>
-            ),
-        },
-        {
-            title: '消息',
-            dataIndex: 'message',
-            key: 'message',
-            ellipsis: true,
-            render: (message: string) => (
+    ];
+
+    if (!isMobile) {
+        columns.push(
+            {
+                title: '操作',
+                dataIndex: 'action',
+                key: 'action',
+                width: 280,
+                render: renderAction,
+            },
+            {
+                title: '来源',
+                key: 'source',
+                width: 176,
+                render: (_: unknown, record: SystemLogItem) => renderSource(record),
+            }
+        );
+    }
+
+    columns.push({
+        title: '消息',
+        dataIndex: 'message',
+        key: 'message',
+        ellipsis: !isMobile,
+        render: (message: string, record: SystemLogItem) => (
+            <div className="system-logs-page__message-cell">
                 <Tooltip title={message}>
                     <span className="system-logs-page__message-text">{message}</span>
                 </Tooltip>
-            ),
-        },
-    ];
+
+                {isMobile ? (
+                    <div className="system-logs-page__message-meta">
+                        <div className="system-logs-page__message-meta-item">
+                            <span className="system-logs-page__message-meta-label">操作</span>
+                            <div className="system-logs-page__message-meta-content">
+                                {renderAction(record.action)}
+                            </div>
+                        </div>
+                        <div className="system-logs-page__message-meta-item">
+                            <span className="system-logs-page__message-meta-label">来源</span>
+                            <div className="system-logs-page__message-meta-content">
+                                {renderSource(record)}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+        ),
+    });
 
     return (
         <div className="page-stack system-logs-page">
@@ -196,24 +228,24 @@ const SystemLogsPage: React.FC = () => {
                     <div className="page-filter-row system-logs-page__filters">
                         <div className="page-filter-row__group">
                             <Select
+                                className="system-logs-page__control"
                                 value={levelFilter || ''}
                                 options={levelOptions}
-                                style={{ width: 150 }}
                                 onChange={(value) => setLevelFilter((value || undefined) as SystemLogLevel | undefined)}
                             />
                             <Select
+                                className="system-logs-page__control system-logs-page__control--lines"
                                 value={lines}
                                 options={lineOptions}
-                                style={{ width: 140 }}
                                 onChange={setLines}
                             />
                             <Input.Search
+                                className="system-logs-page__search"
                                 placeholder="搜索日志关键字"
                                 value={keywordInput}
                                 onChange={(event) => setKeywordInput(event.target.value)}
                                 onSearch={(value) => setKeyword(value.trim())}
                                 allowClear
-                                style={{ width: 320, maxWidth: '100%' }}
                             />
                         </div>
                         <div className="page-filter-row__group system-logs-page__summary">
@@ -228,11 +260,27 @@ const SystemLogsPage: React.FC = () => {
                         columns={columns}
                         loading={loading}
                         pagination={false}
+                        size={isMobile ? 'small' : 'middle'}
+                        tableLayout={isMobile ? 'auto' : 'fixed'}
                         locale={{ emptyText: '暂无系统日志' }}
-                        scroll={{ x: 980 }}
+                        scroll={{ x: isMobile ? 640 : 980 }}
                         expandable={{
                             expandedRowRender: (record: SystemLogItem) => (
                                 <div style={{ display: 'grid', gap: 12 }}>
+                                    {record.action ? (
+                                        <div>
+                                            <Text strong>操作</Text>
+                                            <div style={{ marginTop: 8 }}>
+                                                {renderAction(record.action)}
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    <div>
+                                        <Text strong>来源</Text>
+                                        <div style={{ marginTop: 8 }}>
+                                            {renderSource(record)}
+                                        </div>
+                                    </div>
                                     {record.requestId ? (
                                         <div>
                                             <Text strong>Request ID</Text>

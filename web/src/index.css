@@ -247,6 +247,22 @@ svg {
   border: 1px solid var(--gx-border);
 }
 
+.app-logo--clickable {
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-logo--clickable:hover {
+  background: #eef4ff;
+  border-color: #c7d7fe;
+}
+
+.app-logo--clickable:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
 .app-logo__inner {
   display: inline-flex;
   align-items: center;
@@ -661,6 +677,19 @@ header.ant-layout-header.app-header {
   min-width: 0;
 }
 
+.system-logs-page__control {
+  width: 150px;
+  max-width: 100%;
+}
+
+.system-logs-page__control--lines {
+  width: 140px;
+}
+
+.system-logs-page__search {
+  width: min(320px, 100%);
+}
+
 .system-logs-page__summary {
   margin-left: auto;
   color: var(--gx-text-muted);
@@ -689,11 +718,41 @@ header.ant-layout-header.app-header {
   white-space: nowrap;
 }
 
+.system-logs-page__message-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.system-logs-page__message-meta {
+  display: none;
+}
+
+.system-logs-page__message-meta-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.system-logs-page__message-meta-label {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--gx-text-muted);
+}
+
+.system-logs-page__message-meta-content {
+  min-width: 0;
+}
+
 .system-logs-page__level-tag {
   min-width: 74px;
   text-align: center;
   font-weight: 700;
   border: 1px solid transparent;
+}
+
+.system-logs-page__table .ant-table-cell {
+  vertical-align: top;
 }
 
 .system-logs-page__level-tag--trace {
@@ -1060,6 +1119,48 @@ header.ant-layout-header.app-header {
 
   .system-logs-page__summary {
     margin-left: 0;
+  }
+
+  .system-logs-page__filters {
+    align-items: stretch;
+  }
+
+  .system-logs-page__filters .page-filter-row__group {
+    align-items: stretch;
+  }
+
+  .system-logs-page__control,
+  .system-logs-page__control--lines,
+  .system-logs-page__search {
+    width: 100% !important;
+  }
+
+  .system-logs-page__summary {
+    justify-content: flex-start;
+  }
+
+  .system-logs-page__table .ant-table {
+    font-size: 13px;
+  }
+
+  .system-logs-page__table .ant-table-cell {
+    padding: 12px 10px !important;
+  }
+
+  .system-logs-page__action-text,
+  .system-logs-page__message-text {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .system-logs-page__message-meta {
+    display: grid;
+    gap: 10px;
+  }
+
+  .system-logs-page__table .ant-table-expanded-row pre {
+    overflow-x: auto;
+    font-size: 12px;
   }
 
   .stat-card {

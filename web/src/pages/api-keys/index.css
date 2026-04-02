@@ -11,10 +11,15 @@
 }
 
 .api-keys-page__table-card {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .api-keys-page__table-card .ant-card-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.api-keys-page__table-card .ant-table-wrapper {
   overflow-x: auto;
 }
 
