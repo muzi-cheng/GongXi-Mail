@@ -2194,8 +2194,8 @@ const EmailsPage: React.FC = () => {
                                         ) : null,
                                         <Button
                                             key="view-mail"
-                                            type="primary"
                                             size="small"
+                                            icon={<EyeOutlined />}
                                             className="emails-page__mail-action-btn emails-page__mail-action-btn--view"
                                             onClick={() => handleViewEmailDetail(item)}
                                         >

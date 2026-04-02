@@ -421,11 +421,15 @@
   flex-wrap: wrap;
   gap: 8px;
   padding-left: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .emails-page__mail-list .ant-list-item-action > li {
   margin: 0;
   padding: 0;
+  min-width: 0;
+  display: flex;
 }
 
 .emails-page__mail-list .ant-list-item-action-split {
@@ -490,12 +494,39 @@
 }
 
 .emails-page__mail-action-btn {
-  min-width: 96px;
+  min-width: clamp(92px, 9vw, 128px);
+  max-width: 100%;
+  height: 32px;
+  padding-inline: 12px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border-radius: 8px;
+  gap: 6px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  border: 1px solid #dbeafe !important;
+  background: #f8fbff !important;
+  color: #1d4ed8 !important;
+  box-shadow: none !important;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.emails-page__mail-action-btn:hover,
+.emails-page__mail-action-btn:focus,
+.emails-page__mail-action-btn:active {
+  border-color: #91caff !important;
+  background: #eff6ff !important;
+  color: #155eef !important;
+  box-shadow: none !important;
+}
+
+.emails-page__mail-action-btn .anticon {
+  font-size: 13px;
+}
+
+.emails-page__mail-action-btn--view {
+  border-color: #bfdbfe !important;
 }
 
 .emails-page__iframe {
@@ -676,14 +707,19 @@
   .emails-page__mail-list .ant-list-item-action {
     width: 100%;
     margin-inline-start: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
   }
 
   .emails-page__mail-list .ant-list-item-action > li {
-    flex: 1 1 0;
+    width: auto;
+    flex: initial;
   }
 
   .emails-page__mail-list .ant-list-item-action .ant-btn {
     width: 100%;
+    min-width: 0;
   }
 
   .emails-page__mail-list .ant-list-pagination .ant-pagination {
@@ -751,8 +787,12 @@
   }
 
   .emails-page__mail-list .ant-list-item-action > li {
-    width: 100%;
-    flex-basis: 100%;
+    width: auto;
+    flex-basis: auto;
+  }
+
+  .emails-page__mail-list .ant-list-item-action {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .emails-page__mail-list .ant-list-pagination .ant-pagination-simple-pager {
