@@ -345,13 +345,27 @@ svg {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   padding-inline: 0 !important;
+}
+
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item .ant-menu-title-content,
+.app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .ant-menu-title-content {
+  display: none;
 }
 
 .app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item .ant-menu-item-icon,
 .app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .ant-menu-item-icon,
 .app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-item .anticon,
 .app-sider.ant-layout-sider-collapsed .app-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  line-height: 1;
   margin-inline-end: 0;
   font-size: 18px;
 }

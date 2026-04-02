@@ -31,7 +31,6 @@ import {
     InboxOutlined,
     SearchOutlined,
     MailOutlined,
-    GroupOutlined,
     SyncOutlined,
     EyeOutlined,
     EyeInvisibleOutlined,
@@ -1561,7 +1560,6 @@ const EmailsPage: React.FC = () => {
                                     <div className="page-toolbar__group">
                                         <Button
                                             className="emails-page__toolbar-neutral"
-                                            icon={<GroupOutlined />}
                                             onClick={() => setAssignGroupModalVisible(true)}
                                             disabled={!hasSelection}
                                         >
