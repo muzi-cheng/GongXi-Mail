@@ -343,12 +343,50 @@
   max-width: 280px;
 }
 
+.emails-page__mail-modal .ant-modal-content,
+.emails-page__mail-modal .ant-modal-header,
+.emails-page__mail-modal .ant-modal-title,
+.emails-page__mail-modal .ant-modal-body {
+  min-width: 0;
+}
+
+.emails-page__mail-modal .ant-modal-header {
+  padding-inline-end: 52px;
+}
+
+.emails-page__mail-modal .ant-modal-body {
+  overflow-x: hidden;
+}
+
+.emails-page__mail-modal-title {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.emails-page__mail-modal-email {
+  min-width: 0;
+  max-width: 100%;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.emails-page__mail-modal-suffix {
+  color: #475569;
+  flex: 0 0 auto;
+}
+
 .emails-page__mail-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 16px;
+  min-width: 0;
 }
 
 .emails-page__mail-count {
@@ -360,6 +398,16 @@
 .emails-page__mail-list {
   max-height: 450px;
   overflow: auto;
+  overflow-x: hidden;
+}
+
+.emails-page__mail-list .ant-spin-nested-loading,
+.emails-page__mail-list .ant-spin-container,
+.emails-page__mail-list .ant-list-items,
+.emails-page__mail-list .ant-list-item,
+.emails-page__mail-list .ant-list-item-meta,
+.emails-page__mail-list .ant-list-item-meta-content {
+  min-width: 0;
 }
 
 .emails-page__mail-list .ant-list-item {
@@ -368,15 +416,46 @@
 
 .emails-page__mail-list .ant-list-item-action {
   margin-inline-start: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 0;
+}
+
+.emails-page__mail-list .ant-list-item-action > li {
+  margin: 0;
+  padding: 0;
+}
+
+.emails-page__mail-list .ant-list-item-action-split {
+  display: none;
 }
 
 .emails-page__mail-list .ant-list-pagination {
   margin-top: 16px;
+  overflow-x: hidden;
+}
+
+.emails-page__mail-list .ant-list-pagination .ant-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .emails-page__mail-subject {
   display: inline-block;
   max-width: min(100%, 600px);
+}
+
+.emails-page__mail-description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .emails-page__mail-meta {
@@ -392,6 +471,31 @@
 
 .emails-page__mail-date {
   color: #94a3b8;
+}
+
+.emails-page__mail-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.emails-page__mail-code-tag {
+  margin-inline-end: 0;
+  max-width: 100%;
+  font-weight: 600;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.emails-page__mail-action-btn {
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 8px;
 }
 
 .emails-page__iframe {
@@ -478,6 +582,19 @@
     width: 100%;
   }
 
+  .emails-page__mail-modal .ant-modal-header {
+    padding-inline-end: 56px;
+  }
+
+  .emails-page__mail-modal-title {
+    align-items: flex-start;
+    padding-right: 0;
+  }
+
+  .emails-page__mail-modal-suffix {
+    flex-basis: 100%;
+  }
+
   .emails-page__mail-toolbar {
     gap: 8px;
   }
@@ -491,14 +608,31 @@
     gap: 10px;
   }
 
+  .emails-page__mail-list .ant-list-item-meta {
+    width: 100%;
+  }
+
   .emails-page__mail-list .ant-list-item-action {
     width: 100%;
     margin-inline-start: 0;
   }
 
-  .emails-page__mail-list .ant-list-item-action > li,
+  .emails-page__mail-list .ant-list-item-action > li {
+    flex: 1 1 0;
+  }
+
   .emails-page__mail-list .ant-list-item-action .ant-btn {
     width: 100%;
+  }
+
+  .emails-page__mail-list .ant-list-pagination .ant-pagination {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .emails-page__mail-list .ant-list-pagination .ant-pagination-total-text {
+    flex-basis: 100%;
+    margin-inline-end: 0;
   }
 
   .emails-page__mail-subject {
@@ -548,6 +682,20 @@
 
   .emails-page__mail-meta {
     gap: 4px 12px;
+  }
+
+  .emails-page__mail-modal .ant-modal-close {
+    inset-inline-end: 10px;
+    top: 10px;
+  }
+
+  .emails-page__mail-list .ant-list-item-action > li {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .emails-page__mail-list .ant-list-pagination .ant-pagination-simple-pager {
+    min-width: 0;
   }
 
   .emails-page__iframe {

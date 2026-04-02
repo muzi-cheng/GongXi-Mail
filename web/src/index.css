@@ -673,6 +673,16 @@ header.ant-layout-header.app-header {
   gap: 16px;
 }
 
+.system-logs-page__card .ant-space {
+  width: 100%;
+  min-width: 0;
+}
+
+.system-logs-page__card .ant-space-item {
+  width: 100%;
+  min-width: 0;
+}
+
 .system-logs-page__filters .page-filter-row__group {
   min-width: 0;
 }
@@ -749,6 +759,30 @@ header.ant-layout-header.app-header {
   text-align: center;
   font-weight: 700;
   border: 1px solid transparent;
+}
+
+.system-logs-page__table-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.system-logs-page__table,
+.system-logs-page__table .ant-spin-nested-loading,
+.system-logs-page__table .ant-spin-container,
+.system-logs-page__table .ant-table,
+.system-logs-page__table .ant-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.system-logs-page__table .ant-table-content {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 .system-logs-page__table .ant-table-cell {
@@ -1145,6 +1179,14 @@ header.ant-layout-header.app-header {
 
   .system-logs-page__table .ant-table-cell {
     padding: 12px 10px !important;
+  }
+
+  .system-logs-page__table-shell {
+    max-width: 100%;
+  }
+
+  .system-logs-page__table .ant-table-content {
+    overscroll-behavior-x: contain;
   }
 
   .system-logs-page__action-text,

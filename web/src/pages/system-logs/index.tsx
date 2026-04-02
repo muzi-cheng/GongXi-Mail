@@ -253,58 +253,60 @@ const SystemLogsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <Table
-                        className="system-logs-page__table"
-                        rowKey="id"
-                        dataSource={logs}
-                        columns={columns}
-                        loading={loading}
-                        pagination={false}
-                        size={isMobile ? 'small' : 'middle'}
-                        tableLayout={isMobile ? 'auto' : 'fixed'}
-                        locale={{ emptyText: '暂无系统日志' }}
-                        scroll={{ x: isMobile ? 640 : 980 }}
-                        expandable={{
-                            expandedRowRender: (record: SystemLogItem) => (
-                                <div style={{ display: 'grid', gap: 12 }}>
-                                    {record.action ? (
+                    <div className="system-logs-page__table-shell">
+                        <Table
+                            className="system-logs-page__table"
+                            rowKey="id"
+                            dataSource={logs}
+                            columns={columns}
+                            loading={loading}
+                            pagination={false}
+                            size={isMobile ? 'small' : 'middle'}
+                            tableLayout={isMobile ? 'auto' : 'fixed'}
+                            locale={{ emptyText: '暂无系统日志' }}
+                            scroll={{ x: isMobile ? 560 : 980 }}
+                            expandable={{
+                                expandedRowRender: (record: SystemLogItem) => (
+                                    <div style={{ display: 'grid', gap: 12 }}>
+                                        {record.action ? (
+                                            <div>
+                                                <Text strong>操作</Text>
+                                                <div style={{ marginTop: 8 }}>
+                                                    {renderAction(record.action)}
+                                                </div>
+                                            </div>
+                                        ) : null}
                                         <div>
-                                            <Text strong>操作</Text>
+                                            <Text strong>来源</Text>
                                             <div style={{ marginTop: 8 }}>
-                                                {renderAction(record.action)}
+                                                {renderSource(record)}
                                             </div>
                                         </div>
-                                    ) : null}
-                                    <div>
-                                        <Text strong>来源</Text>
-                                        <div style={{ marginTop: 8 }}>
-                                            {renderSource(record)}
-                                        </div>
-                                    </div>
-                                    {record.requestId ? (
-                                        <div>
-                                            <Text strong>Request ID</Text>
-                                            <div style={{ marginTop: 8 }}>
-                                                <Text copyable>{record.requestId}</Text>
+                                        {record.requestId ? (
+                                            <div>
+                                                <Text strong>Request ID</Text>
+                                                <div style={{ marginTop: 8 }}>
+                                                    <Text copyable>{record.requestId}</Text>
+                                                </div>
                                             </div>
+                                        ) : null}
+                                        <div>
+                                            <Text strong>上下文</Text>
+                                            <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                                                {JSON.stringify(record.context, null, 2) || '{}'}
+                                            </pre>
                                         </div>
-                                    ) : null}
-                                    <div>
-                                        <Text strong>上下文</Text>
-                                        <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                                            {JSON.stringify(record.context, null, 2) || '{}'}
-                                        </pre>
+                                        <div>
+                                            <Text strong>原始日志</Text>
+                                            <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                                                {record.raw}
+                                            </pre>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <Text strong>原始日志</Text>
-                                        <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                                            {record.raw}
-                                        </pre>
-                                    </div>
-                                </div>
-                            ),
-                        }}
-                    />
+                                ),
+                            }}
+                        />
+                    </div>
                 </Space>
             </Card>
         </div>

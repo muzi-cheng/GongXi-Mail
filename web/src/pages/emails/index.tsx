@@ -26,6 +26,7 @@ import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
+    CopyOutlined,
     UploadOutlined,
     DownloadOutlined,
     InboxOutlined,
@@ -190,6 +191,135 @@ const fallbackCopyText = (value: string): boolean => {
     } finally {
         document.body.removeChild(textArea);
     }
+};
+
+const VERIFICATION_KEYWORD_REGEX =
+    /(验证码|驗證碼|验证码|code|otp|pin|verification|confirm(?:ation)?|dynamic\s*code|security\s*code|一次性(?:密码|密碼|验证码|驗證碼))/i;
+
+const VERIFICATION_CONTEXT_PATTERNS: RegExp[] = [
+    /(?:验证码|驗證碼|验证码|dynamic\s*code|security\s*code|verification(?:\s*code)?|confirm(?:ation)?\s*code|one[-\s]*time\s*(?:password|code)|otp|pin|code)[^A-Z0-9]{0,24}([A-Z0-9]{4,10}(?:-[A-Z0-9]{2,8}){0,2})/i,
+    /([A-Z0-9]{4,10}(?:-[A-Z0-9]{2,8}){0,2})[^A-Z0-9]{0,24}(?:验证码|驗證碼|验证码|dynamic\s*code|security\s*code|verification(?:\s*code)?|confirm(?:ation)?\s*code|one[-\s]*time\s*(?:password|code)|otp|pin|code)/i,
+];
+
+const normalizeMessageText = (value: string): string => value.replace(/\s+/g, ' ').trim();
+
+const normalizeVerificationCodeCandidate = (value: string): string =>
+    value.trim().replace(/\s+/g, '').toUpperCase();
+
+const stripHtmlToText = (value: string): string =>
+    value
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;|&#160;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>');
+
+const isLikelyVerificationCode = (value: string): boolean => {
+    const normalized = normalizeVerificationCodeCandidate(value);
+
+    if (!normalized || !/^[A-Z0-9-]+$/.test(normalized)) {
+        return false;
+    }
+
+    const compact = normalized.replace(/-/g, '');
+    if (compact.length < 4 || compact.length > 10) {
+        return false;
+    }
+
+    return /\d/.test(compact);
+};
+
+const extractVerificationCodeByContext = (value: string): string | null => {
+    const content = normalizeMessageText(value);
+    if (!content) {
+        return null;
+    }
+
+    for (const pattern of VERIFICATION_CONTEXT_PATTERNS) {
+        const matched = content.match(pattern)?.[1];
+        if (!matched) {
+            continue;
+        }
+
+        const normalized = normalizeVerificationCodeCandidate(matched);
+        if (isLikelyVerificationCode(normalized)) {
+            return normalized;
+        }
+    }
+
+    return null;
+};
+
+const extractVerificationCodeLoosely = (value: string): string | null => {
+    const content = normalizeMessageText(value);
+    if (!content) {
+        return null;
+    }
+
+    const numericMatches = content.match(/\b\d{4,8}\b/g) || [];
+    for (const candidate of numericMatches) {
+        if (isLikelyVerificationCode(candidate)) {
+            return normalizeVerificationCodeCandidate(candidate);
+        }
+    }
+
+    const hyphenMixedMatches = content.match(/\b[A-Z0-9]{2,8}(?:-[A-Z0-9]{2,8}){1,2}\b/gi) || [];
+    for (const candidate of hyphenMixedMatches) {
+        if (isLikelyVerificationCode(candidate)) {
+            return normalizeVerificationCodeCandidate(candidate);
+        }
+    }
+
+    const compactMixedMatches = content.match(/\b[A-Z0-9]{5,10}\b/gi) || [];
+    for (const candidate of compactMixedMatches) {
+        const normalized = normalizeVerificationCodeCandidate(candidate);
+        const compact = normalized.replace(/-/g, '');
+
+        if (!/[A-Z]/.test(compact) || !/\d/.test(compact)) {
+            continue;
+        }
+
+        if (isLikelyVerificationCode(normalized)) {
+            return normalized;
+        }
+    }
+
+    return null;
+};
+
+const extractVerificationCode = (mail: MailItem): string | null => {
+    const subject = normalizeMessageText(mail.subject || '');
+    const text = normalizeMessageText(mail.text || '');
+    const htmlText = normalizeMessageText(stripHtmlToText(mail.html || ''));
+
+    const sources = [subject, text, htmlText].filter(Boolean);
+
+    for (const source of sources) {
+        const byContext = extractVerificationCodeByContext(source);
+        if (byContext) {
+            return byContext;
+        }
+    }
+
+    const subjectLooseCode = extractVerificationCodeLoosely(subject);
+    if (subjectLooseCode) {
+        return subjectLooseCode;
+    }
+
+    for (const source of [text, htmlText]) {
+        if (!source || !VERIFICATION_KEYWORD_REGEX.test(source)) {
+            continue;
+        }
+
+        const looseCode = extractVerificationCodeLoosely(source);
+        if (looseCode) {
+            return looseCode;
+        }
+    }
+
+    return null;
 };
 
 const EmailsPage: React.FC = () => {
@@ -761,6 +891,38 @@ const EmailsPage: React.FC = () => {
             message.error('复制失败，请手动复制');
         }
     }, []);
+
+    const handleCopyVerificationCode = useCallback(async (code: string) => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(code);
+            } else if (!fallbackCopyText(code)) {
+                throw new Error('Clipboard API unavailable');
+            }
+
+            message.success(`验证码 ${code} 已复制`);
+        } catch {
+            if (fallbackCopyText(code)) {
+                message.success(`验证码 ${code} 已复制`);
+                return;
+            }
+
+            message.error('复制失败，请手动复制验证码');
+        }
+    }, []);
+
+    const verificationCodeByMailId = useMemo(() => {
+        const codeMap: Record<string, string> = {};
+
+        for (const mail of mailList) {
+            const code = extractVerificationCode(mail);
+            if (code) {
+                codeMap[mail.id] = code;
+            }
+        }
+
+        return codeMap;
+    }, [mailList]);
 
     const handleViewEmailDetail = (record: MailItem) => {
         setEmailDetailSubject(record.subject || '无主题');
@@ -1967,7 +2129,17 @@ const EmailsPage: React.FC = () => {
             {/* 邮件列表 Modal */}
             {mailModalVisible && (
                 <Modal
-                    title={`${currentEmail} 的${currentMailbox === 'INBOX' ? '收件箱' : '垃圾箱'}`}
+                    className="emails-page__mail-modal"
+                    title={
+                        <div className="emails-page__mail-modal-title">
+                            <span className="emails-page__mail-modal-email" title={currentEmail}>
+                                {currentEmail || '-'}
+                            </span>
+                            <span className="emails-page__mail-modal-suffix">
+                                的{currentMailbox === 'INBOX' ? '收件箱' : '垃圾箱'}
+                            </span>
+                        </div>
+                    }
                     open={mailModalVisible}
                     onCancel={() => setMailModalVisible(false)}
                     footer={null}
@@ -2005,15 +2177,32 @@ const EmailsPage: React.FC = () => {
                         renderItem={(item: MailItem) => (
                             <List.Item
                                 key={item.id}
-                                actions={[
-                                    <Button
-                                        type="primary"
-                                        size="small"
-                                        onClick={() => handleViewEmailDetail(item)}
-                                    >
-                                        查看
-                                    </Button>,
-                                ]}
+                                actions={(() => {
+                                    const verificationCode = verificationCodeByMailId[item.id];
+
+                                    return [
+                                        verificationCode ? (
+                                            <Button
+                                                key="copy-code"
+                                                size="small"
+                                                icon={<CopyOutlined />}
+                                                className="emails-page__mail-action-btn"
+                                                onClick={() => void handleCopyVerificationCode(verificationCode)}
+                                            >
+                                                复制验证码
+                                            </Button>
+                                        ) : null,
+                                        <Button
+                                            key="view-mail"
+                                            type="primary"
+                                            size="small"
+                                            className="emails-page__mail-action-btn emails-page__mail-action-btn--view"
+                                            onClick={() => handleViewEmailDetail(item)}
+                                        >
+                                            查看
+                                        </Button>,
+                                    ].filter(Boolean);
+                                })()}
                             >
                                 <List.Item.Meta
                                     title={
@@ -2022,11 +2211,20 @@ const EmailsPage: React.FC = () => {
                                         </Typography.Text>
                                     }
                                     description={
-                                        <div className="emails-page__mail-meta">
-                                            <span className="emails-page__mail-from">{item.from || '未知发件人'}</span>
-                                            <span className="emails-page__mail-date">
-                                                {item.date ? dayjs(item.date).format('YYYY-MM-DD HH:mm') : '-'}
-                                            </span>
+                                        <div className="emails-page__mail-description">
+                                            <div className="emails-page__mail-meta">
+                                                <span className="emails-page__mail-from">{item.from || '未知发件人'}</span>
+                                                <span className="emails-page__mail-date">
+                                                    {item.date ? dayjs(item.date).format('YYYY-MM-DD HH:mm') : '-'}
+                                                </span>
+                                            </div>
+                                            {verificationCodeByMailId[item.id] ? (
+                                                <div className="emails-page__mail-code-row">
+                                                    <Tag color="gold" className="emails-page__mail-code-tag">
+                                                        验证码：{verificationCodeByMailId[item.id]}
+                                                    </Tag>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     }
                                 />
