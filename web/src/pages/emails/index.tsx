@@ -26,12 +26,14 @@ import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
+    CheckCircleOutlined,
     CopyOutlined,
     UploadOutlined,
     DownloadOutlined,
     InboxOutlined,
     SearchOutlined,
     MailOutlined,
+    PauseCircleOutlined,
     SyncOutlined,
     EyeOutlined,
     EyeInvisibleOutlined,
@@ -120,6 +122,11 @@ interface EmailDetailsResult extends EmailAccount {
 
 const EMAIL_COLUMN_WIDTH = 240;
 const PASSWORD_MASK = '****************';
+
+const getEmailDisplayText = (email: string): string => {
+    const atIndex = email.indexOf('@');
+    return atIndex > 0 ? email.slice(0, atIndex) : email;
+};
 
 const renderMutedPlaceholder = (value: string = '-') => <Text type="secondary">{value}</Text>;
 
@@ -366,6 +373,7 @@ const EmailsPage: React.FC = () => {
     const [assignGroupModalVisible, setAssignGroupModalVisible] = useState(false);
     const [assignTargetGroupId, setAssignTargetGroupId] = useState<number | undefined>(undefined);
     const [refreshingTokenIds, setRefreshingTokenIds] = useState<Set<number>>(new Set());
+    const [togglingStatusIds, setTogglingStatusIds] = useState<Set<number>>(new Set());
     const [visiblePasswordIds, setVisiblePasswordIds] = useState<Set<number>>(new Set());
     const [passwordById, setPasswordById] = useState<Record<number, string | null>>({});
     const [passwordLoadingIds, setPasswordLoadingIds] = useState<Set<number>>(new Set());
@@ -812,6 +820,30 @@ const EmailsPage: React.FC = () => {
         }
     }, [fetchData]);
 
+    const handleToggleEmailStatus = useCallback(async (record: EmailAccount) => {
+        const nextStatus = record.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED';
+
+        setTogglingStatusIds((prev) => new Set(prev).add(record.id));
+        try {
+            const res = await emailApi.update(record.id, { status: nextStatus });
+            if (res.code === 200) {
+                message.success(nextStatus === 'DISABLED' ? '邮箱已禁用' : '邮箱已启用');
+                fetchData();
+                fetchGroups();
+            } else {
+                message.error(res.message || (nextStatus === 'DISABLED' ? '禁用失败' : '启用失败'));
+            }
+        } catch (err: unknown) {
+            message.error(getErrorMessage(err, nextStatus === 'DISABLED' ? '禁用失败' : '启用失败'));
+        } finally {
+            setTogglingStatusIds((prev) => {
+                const next = new Set(prev);
+                next.delete(record.id);
+                return next;
+            });
+        }
+    }, [fetchData, fetchGroups]);
+
     const handleBatchRefreshTokens = async () => {
         setBatchRefreshing(true);
         try {
@@ -1252,18 +1284,23 @@ const EmailsPage: React.FC = () => {
             key: 'email',
             width: screens.sm ? EMAIL_COLUMN_WIDTH : 220,
             className: 'emails-table__email-column',
-            render: (email: string) => (
-                <button
-                    type="button"
-                    className="emails-table__email-button"
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        void handleCopyEmail(email);
-                    }}
-                >
-                    <span className="emails-table__email-text">{email}</span>
-                </button>
-            ),
+            render: (email: string) => {
+                const displayEmail = getEmailDisplayText(email);
+
+                return (
+                    <button
+                        type="button"
+                        className="emails-table__email-button"
+                        title={email}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void handleCopyEmail(email);
+                        }}
+                    >
+                        <span className="emails-table__email-text">{displayEmail}</span>
+                    </button>
+                );
+            },
         },
         {
             title: '密码',
@@ -1351,14 +1388,6 @@ const EmailsPage: React.FC = () => {
             },
         },
         {
-            title: '最后检查',
-            dataIndex: 'lastCheckAt',
-            key: 'lastCheckAt',
-            width: 112,
-            responsive: ['xl'],
-            render: (val: string | null) => (val ? dayjs(val).format('MM-DD HH:mm') : renderMutedPlaceholder()),
-        },
-        {
             title: 'Token 刷新',
             dataIndex: 'tokenRefreshedAt',
             key: 'tokenRefreshedAt',
@@ -1377,7 +1406,7 @@ const EmailsPage: React.FC = () => {
         {
             title: '操作',
             key: 'action',
-            width: screens.sm ? 212 : 188,
+            width: screens.sm ? 248 : 228,
             render: (_: unknown, record: EmailAccount) => (
                 <Space size={6} wrap={false} className="emails-table__actions">
                     <Tooltip title="刷新 Token">
@@ -1413,6 +1442,15 @@ const EmailsPage: React.FC = () => {
                             onClick={() => handleEdit(record)}
                         />
                     </Tooltip>
+                    <Tooltip title={record.status === 'DISABLED' ? '启用邮箱' : '禁用邮箱'}>
+                        <Button
+                            type="text"
+                            className="emails-table__action-btn"
+                            loading={togglingStatusIds.has(record.id)}
+                            icon={record.status === 'DISABLED' ? <CheckCircleOutlined /> : <PauseCircleOutlined />}
+                            onClick={() => void handleToggleEmailStatus(record)}
+                        />
+                    </Tooltip>
                     <Tooltip title="删除邮箱">
                         <Popconfirm
                             title="确定要删除此邮箱吗？"
@@ -1433,7 +1471,7 @@ const EmailsPage: React.FC = () => {
                 </Space>
             ),
         },
-    ], [handleCopyEmail, handleDelete, handleEdit, handleRefreshToken, handleTogglePassword, handleViewMails, isMobile, passwordById, passwordLoadingIds, refreshingTokenIds, screens.sm, visiblePasswordIds]);
+    ], [handleCopyEmail, handleDelete, handleEdit, handleRefreshToken, handleToggleEmailStatus, handleTogglePassword, handleViewMails, isMobile, passwordById, passwordLoadingIds, refreshingTokenIds, screens.sm, togglingStatusIds, visiblePasswordIds]);
 
     const rowSelection = useMemo(
         () => ({
@@ -1478,7 +1516,7 @@ const EmailsPage: React.FC = () => {
     );
 
     const emailTableScroll = useMemo(
-        () => (isMobile ? { x: 700 } : { x: 'max-content', y: 'calc(100vh - 360px)' }),
+        () => (isMobile ? { x: 740 } : { x: 'max-content', y: 'calc(100vh - 360px)' }),
         [isMobile]
     );
 
