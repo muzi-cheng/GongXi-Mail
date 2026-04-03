@@ -389,6 +389,10 @@
   min-width: 0;
 }
 
+.emails-page__mail-toolbar > * {
+  min-width: 0;
+}
+
 .emails-page__mail-count {
   margin-left: auto;
   color: #64748b;
@@ -412,16 +416,18 @@
 
 .emails-page__mail-list .ant-list-item {
   align-items: flex-start;
+  gap: 12px;
 }
 
 .emails-page__mail-list .ant-list-item-action {
   margin-inline-start: 16px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 8px;
   padding-left: 0;
   min-width: 0;
+  width: min(100%, 232px);
   max-width: 100%;
 }
 
@@ -430,6 +436,11 @@
   padding: 0;
   min-width: 0;
   display: flex;
+  width: 100%;
+}
+
+.emails-page__mail-list .ant-list-item-action > li:only-child {
+  grid-column: 1 / -1;
 }
 
 .emails-page__mail-list .ant-list-item-action-split {
@@ -494,8 +505,9 @@
 }
 
 .emails-page__mail-action-btn {
-  min-width: clamp(92px, 9vw, 128px);
-  max-width: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
   height: 32px;
   padding-inline: 12px !important;
   display: inline-flex;
@@ -707,8 +719,6 @@
   .emails-page__mail-list .ant-list-item-action {
     width: 100%;
     margin-inline-start: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
 
@@ -768,13 +778,21 @@
     padding-inline: 10px;
   }
 
-  .emails-page__mail-toolbar > .ant-btn,
-  .emails-page__mail-toolbar .ant-popconfirm-open-change {
-    width: 100%;
+  .emails-page__mail-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
   }
 
+  .emails-page__mail-toolbar > .ant-btn,
+  .emails-page__mail-toolbar .ant-popconfirm-open-change,
   .emails-page__mail-toolbar .ant-btn {
     width: 100%;
+    min-width: 0;
+  }
+
+  .emails-page__mail-count {
+    grid-column: 1 / -1;
   }
 
   .emails-page__mail-meta {
@@ -789,10 +807,6 @@
   .emails-page__mail-list .ant-list-item-action > li {
     width: auto;
     flex-basis: auto;
-  }
-
-  .emails-page__mail-list .ant-list-item-action {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .emails-page__mail-list .ant-list-pagination .ant-pagination-simple-pager {
