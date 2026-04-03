@@ -414,38 +414,49 @@
   min-width: 0;
 }
 
-.emails-page__mail-list .ant-list-item {
+.emails-page__mail-list .ant-list-item.emails-page__mail-item {
   align-items: flex-start;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.emails-page__mail-list .ant-list-item-action {
-  margin-inline-start: 16px;
+.emails-page__mail-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.emails-page__mail-item-main .ant-list-item-meta {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 0;
+  align-items: flex-start;
+}
+
+.emails-page__mail-item-main .ant-list-item-meta-content {
+  min-width: 0;
+}
+
+.emails-page__mail-item-actions {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 8px;
-  padding-left: 0;
   min-width: 0;
   width: min(100%, 232px);
   max-width: 100%;
+  margin-inline-start: auto;
 }
 
-.emails-page__mail-list .ant-list-item-action > li {
-  margin: 0;
-  padding: 0;
+.emails-page__mail-item-actions--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.emails-page__mail-item-actions > * {
   min-width: 0;
-  display: flex;
   width: 100%;
 }
 
-.emails-page__mail-list .ant-list-item-action > li:only-child {
-  grid-column: 1 / -1;
-}
-
-.emails-page__mail-list .ant-list-item-action-split {
-  display: none;
-}
 
 .emails-page__mail-list .ant-list-pagination {
   margin-top: 16px;
@@ -707,29 +718,19 @@
     max-height: none;
   }
 
-  .emails-page__mail-list .ant-list-item {
+  .emails-page__mail-list .ant-list-item.emails-page__mail-item {
     flex-direction: column;
     gap: 10px;
   }
 
-  .emails-page__mail-list .ant-list-item-meta {
+  .emails-page__mail-item-main,
+  .emails-page__mail-item-main .ant-list-item-meta {
     width: 100%;
   }
 
-  .emails-page__mail-list .ant-list-item-action {
-    width: 100%;
-    margin-inline-start: 0;
-    align-items: stretch;
-  }
-
-  .emails-page__mail-list .ant-list-item-action > li {
-    width: auto;
-    flex: initial;
-  }
-
-  .emails-page__mail-list .ant-list-item-action .ant-btn {
-    width: 100%;
-    min-width: 0;
+  .emails-page__mail-item-actions {
+    width: min(100%, 320px);
+    margin-inline: auto;
   }
 
   .emails-page__mail-list .ant-list-pagination .ant-pagination {
@@ -802,11 +803,6 @@
   .emails-page__mail-modal .ant-modal-close {
     inset-inline-end: 10px;
     top: 10px;
-  }
-
-  .emails-page__mail-list .ant-list-item-action > li {
-    width: auto;
-    flex-basis: auto;
   }
 
   .emails-page__mail-list .ant-list-pagination .ant-pagination-simple-pager {

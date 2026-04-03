@@ -2174,16 +2174,44 @@ const EmailsPage: React.FC = () => {
                             showQuickJumper: !isMobile,
                             showTotal: isMobile ? undefined : (total: number) => `共 ${total} 条`,
                         }}
-                        renderItem={(item: MailItem) => (
-                            <List.Item
-                                key={item.id}
-                                actions={(() => {
-                                    const verificationCode = verificationCodeByMailId[item.id];
+                        renderItem={(item: MailItem) => {
+                            const verificationCode = verificationCodeByMailId[item.id];
+                            const actionClassName = verificationCode
+                                ? 'emails-page__mail-item-actions'
+                                : 'emails-page__mail-item-actions emails-page__mail-item-actions--single';
 
-                                    return [
-                                        verificationCode ? (
+                            return (
+                                <List.Item key={item.id} className="emails-page__mail-item">
+                                    <div className="emails-page__mail-item-main">
+                                        <List.Item.Meta
+                                            title={
+                                                <Typography.Text ellipsis className="emails-page__mail-subject">
+                                                    {item.subject || '(无主题)'}
+                                                </Typography.Text>
+                                            }
+                                            description={
+                                                <div className="emails-page__mail-description">
+                                                    <div className="emails-page__mail-meta">
+                                                        <span className="emails-page__mail-from">{item.from || '未知发件人'}</span>
+                                                        <span className="emails-page__mail-date">
+                                                            {item.date ? dayjs(item.date).format('YYYY-MM-DD HH:mm') : '-'}
+                                                        </span>
+                                                    </div>
+                                                    {verificationCode ? (
+                                                        <div className="emails-page__mail-code-row">
+                                                            <Tag color="gold" className="emails-page__mail-code-tag">
+                                                                验证码：{verificationCode}
+                                                            </Tag>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className={actionClassName}>
+                                        {verificationCode ? (
                                             <Button
-                                                key="copy-code"
                                                 size="small"
                                                 icon={<CopyOutlined />}
                                                 className="emails-page__mail-action-btn"
@@ -2191,45 +2219,19 @@ const EmailsPage: React.FC = () => {
                                             >
                                                 复制验证码
                                             </Button>
-                                        ) : null,
+                                        ) : null}
                                         <Button
-                                            key="view-mail"
                                             size="small"
                                             icon={<EyeOutlined />}
                                             className="emails-page__mail-action-btn emails-page__mail-action-btn--view"
                                             onClick={() => handleViewEmailDetail(item)}
                                         >
                                             查看
-                                        </Button>,
-                                    ].filter(Boolean);
-                                })()}
-                            >
-                                <List.Item.Meta
-                                    title={
-                                        <Typography.Text ellipsis className="emails-page__mail-subject">
-                                            {item.subject || '(无主题)'}
-                                        </Typography.Text>
-                                    }
-                                    description={
-                                        <div className="emails-page__mail-description">
-                                            <div className="emails-page__mail-meta">
-                                                <span className="emails-page__mail-from">{item.from || '未知发件人'}</span>
-                                                <span className="emails-page__mail-date">
-                                                    {item.date ? dayjs(item.date).format('YYYY-MM-DD HH:mm') : '-'}
-                                                </span>
-                                            </div>
-                                            {verificationCodeByMailId[item.id] ? (
-                                                <div className="emails-page__mail-code-row">
-                                                    <Tag color="gold" className="emails-page__mail-code-tag">
-                                                        验证码：{verificationCodeByMailId[item.id]}
-                                                    </Tag>
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                    }
-                                />
-                            </List.Item>
-                        )}
+                                        </Button>
+                                    </div>
+                                </List.Item>
+                            );
+                        }}
                     />
                 </Modal>
             )}
