@@ -313,7 +313,7 @@ export const emailService = {
         const where: Prisma.EmailAccountWhereInput = {};
         if (status) where.status = status;
         if (keyword) {
-            where.email = { contains: keyword };
+            where.email = { contains: keyword, mode: 'insensitive' };
         }
         const normalizedTagKeyword = tagKeyword?.trim();
         if (normalizedTagKeyword) {
